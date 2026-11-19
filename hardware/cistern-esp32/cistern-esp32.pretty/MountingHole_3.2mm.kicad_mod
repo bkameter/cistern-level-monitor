@@ -1,0 +1,24 @@
+(footprint "MountingHole_3.2mm"
+	(version 20241229)
+	(generator "pcbnew")
+	(generator_version "9.0")
+	(layer "F.Cu")
+	(descr "Mounting hole 3.2mm (M3), non-plated")
+	(property "Reference" "REF**"
+		(at 0 -3 0)
+		(layer "F.Fab")
+		(effects (font (size 1.27 1.27)))
+	)
+	(property "Value" "MountingHole_3.2mm"
+		(at 0 0 0)
+		(layer "F.Fab")
+		(effects (font (size 1.27 1.27)))
+	)
+	(attr board_only exclude_from_pos_files exclude_from_bom)
+	(pad "" np_thru_hole circle
+		(at 0 0)
+		(size 4.2 4.2)
+		(drill 3.2)
+		(layers "*.Mask")
+	)
+)

@@ -1,0 +1,9 @@
+Comment,Designator,Footprint,LCSC Part #,Description
+4.7uF/50V,C1,CP_Radial_D5.0mm_P2.00mm,C1589695,Electrolytic cap 4.7uF 50V radial 5x11 P2.0 (Panasonic EEU-FC1H4R7; alternative C721296)
+1uF/50V,C2,CP_Radial_D5.0mm_P2.00mm,C841716,Electrolytic cap 1uF 50V radial 5x11 P2.0 (NCC EKY-500ELL1R0ME11D)
+ADS1115_Module,J1,PinSocket_1x10_P2.54mm_Vertical,C2897373,Pin socket 1x10 P2.54 (HCTL PM254-1-10-Z-8.5)
+Depth sensor 4-20mA,J2,"TerminalBlock_Phoenix_MKDS-1,5-2-5.08_1x02_P5.08mm_Horizontal",C474881,Screw terminal 2P P5.0 (KF301-5.0-2P)
+Socket_C3mini_left,J3,PinSocket_1x08_P2.54mm_Vertical,C27438,Pin socket 1x8 P2.54 (Boomele 2.54-1x8P)
+Socket_C3mini_right,J4,PinSocket_1x08_P2.54mm_Vertical,C27438,Pin socket 1x8 P2.54 (Boomele 2.54-1x8P)
+150R 1/4W,"R1,R2",R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal,,Resistor 150 ohm 1/4W axial P10.16 - select manually at JLCPCB
+B0524S-1WR3,U2,Mornsun_B_S-1WR3_SIP-4,C133013,Mornsun B0524S-1WR3 DC/DC 5V->24V 1W SIP-4

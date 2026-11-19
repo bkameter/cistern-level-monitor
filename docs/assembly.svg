@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1000" viewBox="0 0 1400 1000" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+<defs><marker id="mb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1d4ed8"/></marker><marker id="mp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7b2fd0"/></marker><marker id="mr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b91c1c"/></marker></defs>
+<rect width="1400" height="1000" fill="#ffffff"/>
+<text x="31" y="42" font-size="31" fill="#111" font-weight="bold" text-anchor="start" >Assembly cistern-esp32 v1.1</text>
+<text x="31" y="80" font-size="18" fill="#444" font-weight="normal" text-anchor="start" >Top view of the board (component side). All modules: components/chip facing UP, pins facing DOWN.</text>
+<text x="31" y="108" font-size="14" fill="#666" font-weight="normal" text-anchor="start" >U2, C1, C2, R1, R2 and the pin sockets are already assembled by JLCPCB.</text>
+<text x="556" y="121" font-size="15" fill="#444" font-weight="normal" text-anchor="start" >↑ top (side with lettering)</text>
+<rect x="280" y="130" width="760" height="580" rx="28" fill="#216b3c" stroke="#123f24" stroke-width="3"/>
+<circle cx="320" cy="170" r="16" fill="#eeeeee" stroke="#9aa5a0" stroke-width="2"/>
+<circle cx="1000" cy="170" r="16" fill="#eeeeee" stroke="#9aa5a0" stroke-width="2"/>
+<circle cx="320" cy="671" r="16" fill="#eeeeee" stroke="#9aa5a0" stroke-width="2"/>
+<circle cx="1000" cy="671" r="16" fill="#eeeeee" stroke="#9aa5a0" stroke-width="2"/>
+<text x="532" y="190" font-size="20" fill="#f2f2f2" font-weight="normal" text-anchor="middle" >Cistern C3 mini v1.1</text>
+<rect x="355" y="347" width="268" height="345" rx="14" fill="#24705f" stroke="#1d4ed8" stroke-width="2.5" stroke-dasharray="9 6"/>
+<rect x="380" y="357" width="216" height="54" rx="3" fill="#2a5ea8"/>
+<text x="488" y="389" font-size="16" fill="#fff" font-weight="bold" text-anchor="middle" >Antenna / ESP32-C3 on top</text>
+<text x="380" y="406" font-size="14" fill="#fff" font-weight="bold" text-anchor="middle" >J3</text>
+<text x="609" y="406" font-size="14" fill="#fff" font-weight="bold" text-anchor="middle" >J4</text>
+<rect x="367" y="418" width="26" height="201.79999999999998" fill="#1a1a1a"/>
+<rect x="373.5" y="423.5" width="13" height="13" fill="#e2b13c"/>
+<circle cx="380" cy="455.4" r="6.5" fill="#e2b13c"/>
+<circle cx="380" cy="480.8" r="6.5" fill="#e2b13c"/>
+<circle cx="380" cy="506.2" r="6.5" fill="#e2b13c"/>
+<circle cx="380" cy="531.6" r="6.5" fill="#e2b13c"/>
+<circle cx="380" cy="557.0" r="6.5" fill="#e2b13c"/>
+<circle cx="380" cy="582.4" r="6.5" fill="#e2b13c"/>
+<circle cx="380" cy="607.8" r="6.5" fill="#e2b13c"/>
+<rect x="595" y="418" width="26" height="201.79999999999998" fill="#1a1a1a"/>
+<rect x="601.5" y="423.5" width="13" height="13" fill="#e2b13c"/>
+<circle cx="608" cy="455.4" r="6.5" fill="#e2b13c"/>
+<circle cx="608" cy="480.8" r="6.5" fill="#e2b13c"/>
+<circle cx="608" cy="506.2" r="6.5" fill="#e2b13c"/>
+<circle cx="608" cy="531.6" r="6.5" fill="#e2b13c"/>
+<circle cx="608" cy="557.0" r="6.5" fill="#e2b13c"/>
+<circle cx="608" cy="582.4" r="6.5" fill="#e2b13c"/>
+<circle cx="608" cy="607.8" r="6.5" fill="#e2b13c"/>
+<text x="393" y="435.0" font-size="14" fill="#1a3a8a" font-weight="bold" text-anchor="start" >EN</text>
+<text x="393" y="460.4" font-size="14" fill="#2d5a8a" font-weight="normal" text-anchor="start" >...</text>
+<text x="393" y="485.8" font-size="14" fill="#2d5a8a" font-weight="normal" text-anchor="start" >...</text>
+<text x="393" y="511.2" font-size="14" fill="#2d5a8a" font-weight="normal" text-anchor="start" >...</text>
+<text x="393" y="536.6" font-size="14" fill="#2d5a8a" font-weight="normal" text-anchor="start" >...</text>
+<text x="393" y="562.0" font-size="14" fill="#2d5a8a" font-weight="normal" text-anchor="start" >...</text>
+<text x="393" y="587.4" font-size="14" fill="#2d5a8a" font-weight="normal" text-anchor="start" >...</text>
+<text x="393" y="612.8" font-size="14" fill="#1a3a8a" font-weight="bold" text-anchor="start" >3V3</text>
+<text x="595" y="435.0" font-size="14" fill="#1a3a8a" font-weight="bold" text-anchor="end" >TX</text>
+<text x="595" y="460.4" font-size="14" fill="#2d5a8a" font-weight="normal" text-anchor="end" >RX</text>
+<text x="595" y="485.8" font-size="14" fill="#1a3a8a" font-weight="bold" text-anchor="end" >SCL · IO10</text>
+<text x="595" y="511.2" font-size="14" fill="#1a3a8a" font-weight="bold" text-anchor="end" >SDA · IO8</text>
+<text x="595" y="536.6" font-size="14" fill="#2d5a8a" font-weight="normal" text-anchor="end" >..</text>
+<text x="595" y="562.0" font-size="14" fill="#2d5a8a" font-weight="normal" text-anchor="end" >..</text>
+<text x="595" y="587.4" font-size="14" fill="#1a3a8a" font-weight="bold" text-anchor="end" >GND</text>
+<text x="595" y="612.8" font-size="14" fill="#1a3a8a" font-weight="bold" text-anchor="end" >5V / VBUS</text>
+<text x="489" y="530" font-size="18" fill="#1a3a8a" font-weight="bold" text-anchor="middle" >LOLIN C3 mini</text>
+<rect x="454" y="660" width="71" height="44" rx="7" fill="#a8adb8" stroke="#555b66" stroke-width="2"/>
+<text x="489" y="688" font-size="13" fill="#222" font-weight="bold" text-anchor="middle" >USB-C</text>
+<rect x="671" y="182" width="179" height="285" rx="12" fill="#4a6b66" fill-opacity="0.9" stroke="#7b2fd0" stroke-width="2.5" stroke-dasharray="9 6"/>
+<text x="690" y="190" font-size="14" fill="#fff" font-weight="bold" text-anchor="middle" >J1</text>
+<rect x="677" y="198" width="26" height="252.6" fill="#1a1a1a"/>
+<rect x="683.5" y="203.5" width="13" height="13" fill="#e2b13c"/>
+<circle cx="690" cy="235.4" r="6.5" fill="#e2b13c"/>
+<circle cx="690" cy="260.8" r="6.5" fill="#e2b13c"/>
+<circle cx="690" cy="286.2" r="6.5" fill="#e2b13c"/>
+<circle cx="690" cy="311.6" r="6.5" fill="#e2b13c"/>
+<circle cx="690" cy="337.0" r="6.5" fill="#e2b13c"/>
+<circle cx="690" cy="362.4" r="6.5" fill="#e2b13c"/>
+<circle cx="690" cy="387.79999999999995" r="6.5" fill="#e2b13c"/>
+<circle cx="690" cy="413.2" r="6.5" fill="#e2b13c"/>
+<circle cx="690" cy="438.6" r="6.5" fill="#e2b13c"/>
+<text x="703" y="215.0" font-size="13" fill="#5a1a9a" font-weight="bold" text-anchor="start" >VDD</text>
+<text x="703" y="240.4" font-size="13" fill="#5a1a9a" font-weight="normal" text-anchor="start" >GND</text>
+<text x="703" y="265.8" font-size="13" fill="#5a1a9a" font-weight="normal" text-anchor="start" >SCL</text>
+<text x="703" y="291.2" font-size="13" fill="#5a1a9a" font-weight="normal" text-anchor="start" >SDA</text>
+<text x="703" y="316.6" font-size="13" fill="#5a1a9a" font-weight="normal" text-anchor="start" >ADDR</text>
+<text x="703" y="342.0" font-size="13" fill="#5a1a9a" font-weight="normal" text-anchor="start" >ALRT</text>
+<text x="703" y="367.4" font-size="13" fill="#5a1a9a" font-weight="bold" text-anchor="start" >A0</text>
+<text x="703" y="392.79999999999995" font-size="13" fill="#5a1a9a" font-weight="normal" text-anchor="start" >A1</text>
+<text x="703" y="418.2" font-size="13" fill="#5a1a9a" font-weight="normal" text-anchor="start" >A2</text>
+<text x="703" y="443.6" font-size="13" fill="#5a1a9a" font-weight="normal" text-anchor="start" >A3</text>
+<rect x="770" y="280" width="46" height="46" fill="#222"/>
+<text x="793" y="355" font-size="15" fill="#6a1fb0" font-weight="bold" text-anchor="middle" >ADS1115</text>
+<text x="793" y="376" font-size="12" fill="#6a1fb0" font-weight="normal" text-anchor="middle" >chip on top</text>
+<rect x="890" y="232" width="60" height="116" rx="3" fill="#3a3a3a"/>
+<text x="920" y="295" font-size="13" fill="#ddd" font-weight="normal" text-anchor="middle" >U2</text>
+<circle cx="885" cy="383" r="25" fill="#2c2d6b" stroke="#9aa5c0" stroke-width="2"/>
+<text x="885" y="388" font-size="12" fill="#fff" font-weight="normal" text-anchor="middle" >C1</text>
+<circle cx="970" cy="383" r="25" fill="#2c2d6b" stroke="#9aa5c0" stroke-width="2"/>
+<text x="970" y="388" font-size="12" fill="#fff" font-weight="normal" text-anchor="middle" >C2</text>
+<line x1="700" y1="525" x2="802" y2="525" stroke="#c8c8c8" stroke-width="3"/>
+<rect x="720" y="513" width="62" height="24" rx="9" fill="#5b8ad6"/>
+<text x="816" y="530" font-size="13" fill="#eee" font-weight="normal" text-anchor="start" >R1</text>
+<line x1="700" y1="560" x2="802" y2="560" stroke="#c8c8c8" stroke-width="3"/>
+<rect x="720" y="548" width="62" height="24" rx="9" fill="#5b8ad6"/>
+<text x="816" y="565" font-size="13" fill="#eee" font-weight="normal" text-anchor="start" >R2</text>
+<rect x="854" y="594" width="102" height="110" rx="3" fill="#1e88e5" stroke="#0d47a1" stroke-width="2.5"/>
+<text x="838" y="636" font-size="14" fill="#fff" font-weight="bold" text-anchor="middle" >J2</text>
+<circle cx="880" cy="634" r="17" fill="#dde3ea" stroke="#455a64" stroke-width="2"/>
+<line x1="869" y1="634" x2="891" y2="634" stroke="#455a64" stroke-width="3"/>
+<text x="880" y="669" font-size="14" fill="#fff" font-weight="bold" text-anchor="middle" >1</text>
+<rect x="867" y="689" width="26" height="15" fill="#13294b"/>
+<circle cx="931" cy="634" r="17" fill="#dde3ea" stroke="#455a64" stroke-width="2"/>
+<line x1="920" y1="634" x2="942" y2="634" stroke="#455a64" stroke-width="3"/>
+<text x="931" y="669" font-size="14" fill="#fff" font-weight="bold" text-anchor="middle" >2</text>
+<rect x="918" y="689" width="26" height="15" fill="#13294b"/>
+<path d="M880,704 L880,815 Q880,850 917,878" fill="none" stroke="#d32f2f" stroke-width="6.5" stroke-linecap="round"/>
+<path d="M931,704 L931,878" fill="none" stroke="#111" stroke-width="6.5"/>
+<rect x="890" y="876" width="80" height="34" rx="6" fill="#555"/>
+<text x="930" y="899" font-size="14" fill="#fff" font-weight="normal" text-anchor="middle" >Sensor</text>
+<text x="865" y="769" font-size="17" fill="#d32f2f" font-weight="bold" text-anchor="end" >RED → terminal 1 (+24 V)</text>
+<text x="947" y="769" font-size="17" fill="#111" font-weight="bold" text-anchor="start" >BLACK → terminal 2 (signal)</text>
+<text x="951" y="810" font-size="14" fill="#555" font-weight="normal" text-anchor="start" >(wires enter the terminal from below)</text>
+<rect x="21" y="380" width="241" height="299" rx="9" fill="#f9fafb" stroke="#1d4ed8" stroke-width="2.5"/>
+<text x="34" y="408" font-size="17" fill="#1d4ed8" font-weight="bold" text-anchor="start" >LOLIN C3 mini</text>
+<text x="34" y="436.0" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >Plugs into J3 + J4</text>
+<text x="34" y="460.2" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >• Chip/antenna facing up</text>
+<text x="34" y="484.4" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >• USB-C facing down</text>
+<text x="34" y="508.6" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >  (towards the screw terminal)</text>
+<text x="34" y="532.8" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >• Pins facing down</text>
+<text x="34" y="557.0" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >• 5V/VBUS → bottom pin of J4</text>
+<text x="34" y="581.2" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >• 3V3 → bottom pin of J3</text>
+<text x="34" y="605.4" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >• EN top left, TX top right</text>
+<text x="34" y="629.6" font-size="14" fill="#222" font-weight="normal" text-anchor="start" ></text>
+<text x="34" y="653.8" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >Wrong if 5V is at the top!</text>
+<line x1="262" y1="530" x2="350" y2="530" stroke="#1d4ed8" stroke-width="2" marker-end="url(#mb)"/>
+<rect x="1071" y="130" width="308" height="290" rx="9" fill="#f9fafb" stroke="#7b2fd0" stroke-width="2.5"/>
+<text x="1084" y="158" font-size="17" fill="#7b2fd0" font-weight="bold" text-anchor="start" >ADS1115 module</text>
+<text x="1084" y="186.0" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >Plugs into J1</text>
+<text x="1084" y="210.2" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >• Chip facing up, pins facing down</text>
+<text x="1084" y="234.4" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >• VDD in pin 1 (top, square pad),</text>
+<text x="1084" y="258.6" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >  A3 at the bottom</text>
+<text x="1084" y="282.8" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >• Module sits to the right, inside</text>
+<text x="1084" y="307.0" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >  the "ADS1115" frame</text>
+<text x="1084" y="331.2" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >• A0 = sensor input</text>
+<text x="1084" y="355.4" font-size="14" fill="#222" font-weight="normal" text-anchor="start" ></text>
+<text x="1084" y="379.6" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >If it sticks out to the left over the</text>
+<text x="1084" y="403.79999999999995" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >C3 mini: it is turned around!</text>
+<line x1="1071" y1="260" x2="856" y2="260" stroke="#7b2fd0" stroke-width="2" marker-end="url(#mp)"/>
+<rect x="1071" y="450" width="308" height="250" rx="9" fill="#f9fafb" stroke="#b91c1c" stroke-width="2.5"/>
+<text x="1084" y="478" font-size="17" fill="#b91c1c" font-weight="bold" text-anchor="start" >Depth sensor (4–20 mA)</text>
+<text x="1084" y="506.0" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >Screw terminal J2</text>
+<text x="1084" y="530.2" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >• Terminal 1 (left) = RED</text>
+<text x="1084" y="554.4" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >  +24 V from the converter</text>
+<text x="1084" y="578.6" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >• Terminal 2 (right) = BLACK</text>
+<text x="1084" y="602.8" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >  signal → shunt 75 Ω → A0</text>
+<text x="1084" y="627.0" font-size="14" fill="#222" font-weight="normal" text-anchor="start" ></text>
+<text x="1084" y="651.2" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >Empty: approx. 4 mA = 0.30 V</text>
+<text x="1084" y="675.4" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >Full: 20 mA = 1.50 V</text>
+<line x1="1071" y1="580" x2="960" y2="640" stroke="#b91c1c" stroke-width="2" marker-end="url(#mr)"/>
+<rect x="21" y="791" width="604" height="190" rx="9" fill="#fdf6e3" stroke="#e8a317" stroke-width="2.5"/>
+<text x="34" y="819" font-size="17" fill="#8a3b00" font-weight="bold" text-anchor="start" >Before first power-up</text>
+<text x="34" y="850.0" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >1. Without modules: check 5V–GND and 24V–GND for shorts</text>
+<text x="34" y="876.3" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >2. Plug in the C3 mini only, connect USB: J4 bottom pin to GND ≈ 4.7–5 V,</text>
+<text x="34" y="902.6" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >    J1 pin 1 (VDD) to GND ≈ 3.3 V, J2 terminal 1 to GND ≈ 22–28 V</text>
+<text x="34" y="928.9" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >3. Disconnect USB, plug in the ADS1115, connect the sensor, reconnect USB</text>
+<text x="34" y="955.2" font-size="14" fill="#222" font-weight="normal" text-anchor="start" >4. Serial monitor: approx. 4 mA with the sensor empty</text>
+</svg>

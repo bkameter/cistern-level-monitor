@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+
+# KiCad: local/auto-generated files
+*.kicad_prl
+*.lck
+~*
+.history/
+.mcp-backups/
+*-backups/
+fp-info-cache
+*_drc_violations.json
+drc_report.txt
+
+# Editor / Build
+.vscode/
+build/

@@ -1,0 +1,84 @@
+(footprint "Mornsun_B_S-1WR3_SIP-4"
+  (version 20241229)
+  (generator "kicad-mcp")
+  (generator_version "9.0")
+  (layer "F.Cu")
+  (descr "Mornsun B_S-1WR3 1W DC/DC, SIP-4, P2.54mm, body 11.6 x 6.0 x 10.16 mm (Pin 1 = -Vin, 2 = +Vin, 3 = -Vout, 4 = +Vout)")
+  (tags "DC-DC converter SIP-4 Mornsun THT")
+
+  (property "Reference" "REF**" (at 0 -4.2 0)
+    (layer "F.SilkS")
+    (uuid "92c549fb-4fd0-4199-b3ee-65ca4ef8d5c6")
+    (effects (font (size 1 1) (thickness 0.15)))
+  )
+  (property "Value" "Mornsun_B_S-1WR3_SIP-4" (at 0 4.2 0)
+    (layer "F.Fab")
+    (uuid "602fcdc4-5686-4b57-9ef0-7a5d7d7055ab")
+    (effects (font (size 1 1) (thickness 0.15)))
+  )
+  (property "Datasheet" "" (at 0 0 0)
+    (layer "F.Fab")
+    (uuid "415510f0-491d-45b7-9234-42cb6a70d0df")
+    (effects (font (size 1 1) (thickness 0.15)))
+  )
+
+  (fp_rect
+    (start -6.05 -3.25)
+    (end 6.05 3.25)
+    (stroke (width 0.05) (type default))
+    (fill none)
+    (layer "F.CrtYd")
+    (uuid "9bf8ac8f-96ff-4cab-a10a-7db7d713d64e")
+  )
+
+  (fp_rect
+    (start -5.9 -3.1)
+    (end 5.9 3.1)
+    (stroke (width 0.12) (type default))
+    (fill none)
+    (layer "F.SilkS")
+    (uuid "250566e5-5fb2-4621-a155-695694bff3aa")
+  )
+
+  (fp_rect
+    (start -5.8 -3)
+    (end 5.8 3)
+    (stroke (width 0.1) (type default))
+    (fill none)
+    (layer "F.Fab")
+    (uuid "b910d3bc-6e70-4d1c-8a9b-c5c7cf15b309")
+  )
+
+  (pad "1" thru_hole rect
+    (at -3.81 0)
+    (size 1.6 1.6)
+    (drill 0.9)
+    (layers "*.Cu" "*.Mask")
+    (uuid "8f7f130c-fa1a-4e54-bd20-eab9aa11684f")
+  )
+
+  (pad "2" thru_hole circle
+    (at -1.27 0)
+    (size 1.6 1.6)
+    (drill 0.9)
+    (layers "*.Cu" "*.Mask")
+    (uuid "35919a5d-b23f-417d-9480-4d0d9cc31c73")
+  )
+
+  (pad "3" thru_hole circle
+    (at 1.27 0)
+    (size 1.6 1.6)
+    (drill 0.9)
+    (layers "*.Cu" "*.Mask")
+    (uuid "9c534932-a21f-49ec-accb-d6f6c79fd975")
+  )
+
+  (pad "4" thru_hole circle
+    (at 3.81 0)
+    (size 1.6 1.6)
+    (drill 0.9)
+    (layers "*.Cu" "*.Mask")
+    (uuid "5561ff56-a741-443b-aa40-c7a77b6cf39f")
+  )
+
+)
