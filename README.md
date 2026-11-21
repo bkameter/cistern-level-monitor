@@ -5,7 +5,7 @@ Water level monitoring for cisterns and water tanks: a submersible pressure sens
 ESP32-C3 and an ADS1115 measures the loop current and provides level and history over
 WiFi – via web interface and MQTT.
 
-The web interface is in German. The assembly drawing is available in English and [German](docs/assembly-de.png).
+The web interface is available in German and English (browser language, switchable via link). The assembly drawing is available in English and [German](docs/assembly-de.png).
 
 ![Assembly cistern-esp32 v1.1](docs/assembly.png)
 
@@ -75,7 +75,9 @@ Features:
 - Factory reset: hold the BOOT button for 2 s within the first 5 s after power-up
 
 > **Change the default credentials!** Access point password and web login are
-> `zisterne` / `zisterne:zisterne` out of the box.
+> `zisterne` / `zisterne:zisterne` out of the box. Until the web password is
+> changed, `/config` only offers the "Access" tab and OTA updates are disabled.
+> OTA is also disabled in access point mode.
 
 ## Inspiration and credits
 
