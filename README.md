@@ -64,6 +64,10 @@ LOLIN C3 mini, ADS1115 module and sensor are sourced separately.
 Arduino IDE with the ESP32 board package, board "LOLIN C3 Mini". Required libraries:
 `Adafruit ADS1X15`, `PubSubClient`.
 
+`firmware/cistern/partitions.csv` replaces the default partition table (2 × 1.56 MB app,
+768 KB LittleFS, room for ~33 months of history). The IDE still shows the size against the default
+1.25 MB limit. Switching an existing device to this table needs one USB flash and erases the history.
+
 Features:
 
 - Web interface: `/` shows the level, `/config` the settings
