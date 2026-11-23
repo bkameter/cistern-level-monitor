@@ -3,7 +3,7 @@
 // Developed with the help of Claude Code (Anthropic), https://claude.com/claude-code
 #define VERS "cistern-esp32 1.0, 08.10.2026"
 // Cistern level gauge, LOLIN C3 mini + ADS1115 + 4-20 mA pressure sensor
-// Web: / level (public), /config settings (login zisterne:zisterne); Telnet port 23, MQTT, OTA
+// Web: / level (public), /config settings (login zisterne:zisterne), German/English (?lang=de|en); Telnet port 23, MQTT, OTA
 // History: 5-min values, 1 year in LittleFS (/h/YYYYMM.bin), served as /history?m=YYYYMM (31x288 int16, -1 = empty)
 // No/wrong WiFi -> access point "Zisterne-Setup" (PW zisterne), settings at http://192.168.4.1/config
 // Factory reset: hold BOOT button for 2 s within the first 5 s after power-up
@@ -23,6 +23,7 @@
 const char* HOSTNAME    = "Zisterne";
 const char* AP_SSID     = "Zisterne-Setup";
 const char* AP_PASS     = "zisterne";        // WPA2: min. 8 characters
+const char* DEFAULT_PASS = "zisterne";       // web/OTA; while unchanged: /config only offers "Access", OTA is off
 const char* NTP_SERVER  = "de.pool.ntp.org";
 const char* TZ_INFO     = "CET-1CEST,M3.5.0/02,M10.5.0/03";
 const int PIN_SDA = 8, PIN_SCL = 10, PIN_BOOT = 9;
@@ -48,7 +49,9 @@ WiFiClient telnetClient;
 WiFiClient mqttNet;
 PubSubClient mqtt(mqttNet);
 bool apMode = false;
-String apReason;              // why AP mode, shown on /config
+wl_status_t apStatus;         // why AP mode, see apReason()
+bool defaultPass() { return webPass == DEFAULT_PASS; }
+bool en = false;              // language of the current web request, see setLang()
 
 float lastMa = NAN;
 int lastMm = -1;              // -1 = measurement error
@@ -66,7 +69,7 @@ void loadPrefs() {  // keys are persisted: renaming one loses its stored value
   ssid      = prefs.getString("ssid", "");
   wifiPass  = prefs.getString("wifiPass", "");
   webUser   = prefs.getString("webUser", "zisterne");
-  webPass   = prefs.getString("webPass", "zisterne");
+  webPass   = prefs.getString("webPass", DEFAULT_PASS);
   rangeMm   = prefs.getFloat("rangeMm", 2000);  // sensor 0-2 m water column
   shuntOhm  = prefs.getFloat("shuntOhm", 75);      // 2x 150 ohm in parallel
   offsetMm  = prefs.getFloat("offsetMm", 0);
@@ -128,11 +131,7 @@ void wifiStart() {
   if (WiFi.status() == WL_CONNECTED) {
     Serial.printf("WiFi connected, http://%s\n", WiFi.localIP().toString().c_str());
   } else {
-    wl_status_t st = WiFi.status();
-    apReason = !ssid.length()            ? "Kein WLAN eingestellt."
-             : st == WL_NO_SSID_AVAIL    ? "WLAN '" + ssid + "' nicht gefunden (Router aus / zu weit weg?)."
-             : st == WL_CONNECT_FAILED   ? "Verbindung zu '" + ssid + "' abgelehnt (Passwort falsch?)."
-             : "Keine Verbindung zu '" + ssid + "' nach 20 s (Status " + String(st) + ").";
+    apStatus = WiFi.status();
     WiFi.disconnect();
     int n = WiFi.scanNetworks();  // diagnostics: what does the ESP receive at all?
     Serial.printf("WiFi scan: %d networks\n", n);
@@ -143,9 +142,19 @@ void wifiStart() {
     bool apOk = WiFi.softAP(AP_SSID, AP_PASS);
     WiFi.setTxPower(TX_POWER);
     Serial.printf("softAP %s, channel %d, TX power %.1f dBm\n", apOk ? "OK" : "ERROR", WiFi.channel(), WiFi.getTxPower() / 4.0);
-    Serial.println(apReason);
+    Serial.println(apReason(true));
     Serial.printf("No WiFi -> access point '%s', http://%s/config\n", AP_SSID, WiFi.softAPIP().toString().c_str());
   }
+}
+
+String apReason(bool e) {  // shown on /config and Telnet
+  String s = "'" + ssid + "'";
+  if (!ssid.length()) return e ? "No WiFi configured." : "Kein WLAN eingestellt.";
+  if (apStatus == WL_NO_SSID_AVAIL) return e ? "WiFi " + s + " not found (router off / too far away?)."
+                                             : "WLAN " + s + " nicht gefunden (Router aus / zu weit weg?).";
+  if (apStatus == WL_CONNECT_FAILED) return e ? "Connection to " + s + " refused (wrong password?)."
+                                              : "Verbindung zu " + s + " abgelehnt (Passwort falsch?).";
+  return (e ? "No connection to " + s + " after 20 s (status " : "Keine Verbindung zu " + s + " nach 20 s (Status ") + String(apStatus) + ").";
 }
 
 //*********************************************************************
@@ -162,8 +171,8 @@ void wifiStart() {
   ".seg button{padding:4px 10px;border:0;border-radius:6px;background:none;color:var(--mut);font:inherit;font-size:13px;cursor:pointer}" \
   ".seg button.on{background:var(--card);color:var(--fg);box-shadow:0 1px 2px #0003}" \
   ".nv{display:flex;gap:8px;align-items:center;margin-bottom:8px}.nv input{margin:0;text-align:center}" \
-  ".nv button{background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer}" \
-  ".nv button:disabled{opacity:.4;cursor:default}" \
+  ".nv button,.scan button{background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer}" \
+  "button:disabled{opacity:.4;cursor:default}" \
   ".cw{position:relative}svg{width:100%;height:auto;overflow:visible;touch-action:pan-y}svg text{fill:var(--mut);font-size:11px}" \
   ".g{stroke:var(--line)}.l{fill:none;stroke:var(--acc);stroke-width:2;stroke-linejoin:round}circle{fill:var(--acc)}" \
   ".hl{stroke:var(--mut);stroke-dasharray:3 3}#hc{fill:var(--card);stroke:var(--acc);stroke-width:2.5}" \
@@ -173,16 +182,35 @@ void wifiStart() {
   "input{display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:9px 10px;font:inherit;color:var(--fg);" \
   "background:var(--bg);border:1px solid var(--line);border-radius:8px}" \
   "input:focus{outline:2px solid var(--acc);outline-offset:-1px}" \
+  ".scan{display:flex;gap:8px;margin-top:4px}.scan input{margin:0}" \
+  ".spin::before{content:'';display:inline-block;width:.8em;height:.8em;margin-right:6px;vertical-align:-1px;" \
+  "border:2px solid;border-right-color:transparent;border-radius:50%;animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(1turn)}}" \
   ".row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0 12px}" \
   ".live{font-size:22px;font-weight:600;margin-top:4px}.hint{margin:6px 0 0;font-size:12px;color:var(--mut)}" \
   ".msg{padding:10px 14px;border-radius:8px;margin-bottom:16px}.ok{background:#2e9d4f22;border:1px solid #2e9d4f66}" \
   ".msg.err{color:inherit;background:#d3333322;border:1px solid #d3333366}" \
   ".bar{position:sticky;bottom:0;padding:12px 0;background:var(--bg)}" \
+  ".tabs{margin-bottom:16px}.tabs button{flex:1;padding:8px}" \
   ".btn{background:var(--acc);color:var(--card);border:0;border-radius:8px;padding:10px 24px;font:inherit;font-weight:600;cursor:pointer}"
 
-const char* HEAD = "<!DOCTYPE html><html lang='de'><head><meta charset='utf-8'>"
-  "<meta name='viewport' content='width=device-width,initial-scale=1'><title>Zisterne</title>"
-  "<style>" CSS "</style></head><body><main>";
+String T(const char* de, const char* e) { return en ? e : de; }
+
+void setLang() {  // ?lang=de|en (remembered in a cookie), else cookie, else browser language
+  String l = server.arg("lang");
+  if (l == "de" || l == "en") server.sendHeader("Set-Cookie", "lang=" + l + "; Path=/; Max-Age=31536000");
+  else {
+    String c = server.header("Cookie");
+    int i = c.indexOf("lang=");
+    l = i >= 0 ? c.substring(i + 5, i + 7) : server.header("Accept-Language");
+  }
+  en = !l.startsWith("de");
+}
+
+String head() {
+  return "<!DOCTYPE html><html lang='" + T("de", "en") + "'><head><meta charset='utf-8'>"
+         "<meta name='viewport' content='width=device-width,initial-scale=1'><title>Zisterne</title>"
+         "<style>" CSS "</style></head><body><main>";
+}
 
 bool auth() {
   if (server.authenticate(webUser.c_str(), webPass.c_str())) return true;
@@ -199,18 +227,21 @@ const char PAGE[] = R"HTML(<!DOCTYPE html><html lang="de"><head><meta charset="u
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Zisterne</title><style>)HTML" CSS R"HTML(</style></head><body><main><h1>Zisterne</h1>
 <div class="card"><div class="big" id="cur"></div><div class="mut" id="info"></div></div>
-<div class="card"><div class="hd"><span class="mut">Verlauf (mm)</span>
-<nav class="seg"><button data-m="d">Tag</button><button data-m="w">Woche</button><button data-m="m">Monat</button></nav></div>
+<div class="card"><div class="hd"><span class="mut" data-en="History (mm)">Verlauf (mm)</span>
+<nav class="seg"><button data-m="d" data-en="Day">Tag</button><button data-m="w" data-en="Week">Woche</button><button data-m="m" data-en="Month">Monat</button></nav></div>
 <div class="nv"><button id="prev" aria-label="zurück">‹</button><input type="date" id="date"><button id="next" aria-label="vor">›</button></div>
 <div class="cw"><svg id="chart" viewBox="0 0 600 260"></svg><div id="tip" class="tip" hidden></div></div></div>
-<p class="mut"><a href="/config">Einstellungen</a></p></main>
+<p class="mut"><a href="/config" data-en="Settings">Einstellungen</a> · <a href="?lang=en" id="lng">English</a></p></main>
 <script>/*DATA*/
-cur.textContent=A.mm>=0?A.mm+' mm':'Fehler';
+const t=(d,e)=>A.en?e:d;
+if(A.en){document.documentElement.lang='en';document.querySelectorAll('[data-en]').forEach(e=>e.textContent=e.dataset.en);
+ prev.ariaLabel='back';next.ariaLabel='forward';lng.href='?lang=de';lng.textContent='Deutsch'}
+cur.textContent=A.mm>=0?A.mm+' mm':t('Fehler','Error');
 info.innerHTML=(A.ma>=0?A.ma.toFixed(2)+' mA · ':'')+A.time+(A.err?'<br><span class="err">'+A.err+'</span>':'');
 // days as day numbers (UTC, since 1970); value index = day number*288 + 5-min slot
 const J=new Date(),TODAY=Date.UTC(J.getFullYear(),J.getMonth(),J.getDate())/864e5,MIN=TODAY-366,
  dt=n=>new Date(n*864e5),iso=n=>dt(n).toISOString().slice(0,10),
- fmtDay=n=>dt(n).toLocaleDateString('de',{day:'2-digit',month:'2-digit',timeZone:'UTC'}),
+ fmtDay=n=>dt(n).toLocaleDateString(t('de','en-GB'),{day:'2-digit',month:'2-digit',timeZone:'UTC'}),
  monthKey=n=>dt(n).getUTCFullYear()*100+dt(n).getUTCMonth()+1,  // YYYYMM
  cache={},month=k=>cache[k]||(cache[k]=fetch('/history?m='+k).then(r=>r.ok?r.arrayBuffer():Promise.reject())
   .then(b=>new Int16Array(b)).catch(()=>{delete cache[k];return new Int16Array(0)}));
@@ -234,7 +265,7 @@ async function draw(){
  if(location.hash!=h0)return;  // user navigated on meanwhile
  ks.forEach((k,j)=>{const b=Date.UTC(k/100|0,k%100-1,1)/864e5*288;
   arr[j].forEach((v,s)=>{if(v>=0&&b+s>=first*288&&b+s<(last+1)*288)P.push([b+s,v])})});
- if(!P.length){chart.innerHTML='<text x="300" y="130" text-anchor="middle">Keine Daten in diesem Zeitraum</text>';return}
+ if(!P.length){chart.innerHTML='<text x="300" y="130" text-anchor="middle">'+t('Keine Daten in diesem Zeitraum','No data in this period')+'</text>';return}
  const x0=first*288,x1=(last+1)*288-1,
   mn=Math.min(...P.map(p=>p[1])),mx=Math.max(...P.map(p=>p[1])),
   S=[10,20,50,100,200,500,1000].find(s=>s*4>=mx-mn)||2000,  // grid step, y axis adapts to the visible range
@@ -243,7 +274,7 @@ async function draw(){
  let s='',d='';
  for(let v=lo;v<=hi;v+=S)s+=`<line class="g" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end">${v}</text>`;
  const st=x1-x0<288?72:288*Math.ceil((last-first+1)/8);  // x labels: 6 h grid (day) or at most 8 days
- for(let i=x0;i<=x1;i+=st)s+=`<text x="${x(i)}" y="${H-6}" text-anchor="middle">${i%288?i%288/12+' Uhr':fmtDay(i/288)}</text>`;
+ for(let i=x0;i<=x1;i+=st)s+=`<text x="${x(i)}" y="${H-6}" text-anchor="middle">${i%288?i%288/12+t(' Uhr',':00'):fmtDay(i/288)}</text>`;
  P.forEach((p,j)=>d+=(j&&p[0]-P[j-1][0]==1?'L':'M')+x(p[0]).toFixed(1)+','+y(p[1]).toFixed(1));  // don't bridge gaps
  s+=`<path class="l" d="${d}"/>`;
  if(P.length<60)s+=P.map(p=>`<circle cx="${x(p[0])}" cy="${y(p[1])}" r="3"/>`).join('');
@@ -253,7 +284,7 @@ async function draw(){
    p=P.reduce((a,q)=>Math.abs(q[0]-i)<Math.abs(a[0]-i)?q:a),px=x(p[0]),py=y(p[1]);
   hl.setAttribute('x1',px);hl.setAttribute('x2',px);hc.setAttribute('cx',px);hc.setAttribute('cy',py);
   hl.setAttribute('visibility','visible');hc.setAttribute('visibility','visible');
-  tip.innerHTML=`<b>${p[1]} mm</b><br>${fmtDay(p[0]/288|0)} ${p[0]%288/12|0}:${String(p[0]%12*5).padStart(2,'0')} Uhr`;tip.hidden=false;
+  tip.innerHTML=`<b>${p[1]} mm</b><br>${fmtDay(p[0]/288|0)} ${p[0]%288/12|0}:${String(p[0]%12*5).padStart(2,'0')}${t(' Uhr','')}`;tip.hidden=false;
   tip.style.left=px/W*b.width+'px';tip.style.top=py/H*b.height+'px';
   tip.style.transform=px>W/2?'translate(calc(-100% - 12px),-50%)':'translate(12px,-50%)'};
  chart.onpointerleave=e=>{if(e.pointerType=='mouse'){tip.hidden=true;hl.setAttribute('visibility','hidden');hc.setAttribute('visibility','hidden')}};
@@ -262,80 +293,134 @@ onhashchange=draw;draw();
 setInterval(()=>{if(tip.hidden&&state().a==TODAY)location.reload()},60000);  // only in the current view and without an open tip
 </script></body></html>)HTML";
 
-const char* errorText() {
-  if (!adsOk) return "Fehler: ADS1115 nicht gefunden";
-  if (lastMm < 0) return "Fehler: Strom ausserhalb 3,5-21 mA (Kabelbruch/Kurzschluss?)";
+const char* errorText(bool e) {
+  if (!adsOk) return e ? "Error: ADS1115 not found" : "Fehler: ADS1115 nicht gefunden";
+  if (lastMm < 0) return e ? "Error: current outside 3.5-21 mA (broken wire/short circuit?)"
+                           : "Fehler: Strom ausserhalb 3,5-21 mA (Kabelbruch/Kurzschluss?)";
   return "";
 }
 
 void handleRoot() {  // no login
+  setLang();
   tm t;
-  char stamp[40] = "Uhrzeit noch nicht synchronisiert";
-  if (getLocalTime(&t, 0)) strftime(stamp, sizeof stamp, "Stand %d.%m.%Y %H:%M", &t);
+  char stamp[40];
+  if (!getLocalTime(&t, 0) || !strftime(stamp, sizeof stamp, T("Stand %d.%m.%Y %H:%M", "As of %Y-%m-%d %H:%M").c_str(), &t))
+    strcpy(stamp, T("Uhrzeit noch nicht synchronisiert", "Time not synchronized yet").c_str());
   // send in chunks, avoids a String copy of the page; the browser fetches history via /history
   const char* mark = strstr(PAGE, "/*DATA*/");
   server.setContentLength(CONTENT_LENGTH_UNKNOWN);
   server.send(200, "text/html", "");
   server.sendContent(PAGE, mark - PAGE);
   server.sendContent("const A={mm:" + String(lastMm) + ",ma:" + String(isnan(lastMa) ? -1 : lastMa, 2) +
-                     ",time:\"" + stamp + "\",err:\"" + errorText() + "\"};");
+                     ",en:" + (en ? "1" : "0") + ",time:\"" + stamp + "\",err:\"" + errorText(en) + "\"};");
   server.sendContent(mark + 8, strlen(mark + 8));  // rest of the page after /*DATA*/
   server.sendContent("");                          // end
 }
 
-void sendConfig(const String& msg) {
+void sendConfig(const String& msg = "", bool err = false) {
   char live[80];
-  if (lastMm < 0) snprintf(live, sizeof live, "%s", errorText());
+  if (lastMm < 0) snprintf(live, sizeof live, "%s", errorText(en));
   else snprintf(live, sizeof live, "%.2f mA = %d mm", lastMa, lastMm);
-  String nets = "<datalist id='nets'>", seen = "\n";  // WiFi scan, takes ~2 s, strongest first
-  for (int i = 0, n = WiFi.scanNetworks(); i < n; i++) {
+  String unchanged = T("unverändert", "unchanged");
+  String h = head() + "<div class='hd'><h1>" + T("Einstellungen", "Settings") + "</h1><span>"
+             "<a href='?lang=" + T("en'>English", "de'>Deutsch") + "</a> · <a href='/'>&larr; " + T("Füllstand", "Level") + "</a></span></div>";
+  if (apMode) h += "<div class='msg err'><b>" + T("Access-Point-Modus:", "Access point mode:") + "</b> " + esc(apReason(en)) +
+                   T(" Neuer Versuch alle 10 min.", " Retrying every 10 min.") + "</div>";
+  if (msg.length()) h += "<div class='msg " + String(err ? "err" : "ok") + "'>" + msg + "</div>";
+  String lock = defaultPass() ? " disabled" : "";  // default password: other tabs locked until it is changed
+  if (defaultPass()) h += "<div class='msg err'><b>" + T("Bitte zuerst ein eigenes Passwort setzen.", "Please set your own password first.") + "</b> " +
+                          T("Mit dem Standardpasswort kann jeder im Netz die Einstellungen ändern und Firmware aufspielen. "
+                            "Bis dahin sind die anderen Tabs und OTA-Updates gesperrt.",
+                            "With the default password, anyone on the network can change the settings and upload firmware. "
+                            "Until then, the other tabs and OTA updates are locked.") + "</div>";
+  // tabs: one form, so one save button covers all; tab = active tab, kept across saving
+  h += "<form method='post'><input type='hidden' name='tab' id='tab' value='" + String(defaultPass() ? 2 : constrain(server.arg("tab").toInt(), 0, 2)) + "'>"
+       "<nav class='seg tabs'><button type='button'" + lock + ">" + T("Verbindung", "Connectivity") + "</button>"
+       "<button type='button'" + lock + ">" + T("Kalibrierung", "Calibration") + "</button>"
+       "<button type='button'>" + T("Zugang", "Access") + "</button></nav>"
+       // tab 1: connectivity
+       "<section><div class='card'><h2>" + T("WLAN", "WiFi") + "</h2>"
+       "<label>" + T("Netz (Liste oder eintippen)", "Network (pick or type)") + "<div class='scan'><input name='ssid' list='nets' value=\"" + esc(ssid) + "\">"
+       "<button type='button' id='sb'>" + T("Suchen", "Scan") + "</button></div></label><datalist id='nets'></datalist>"
+       "<label>" + T("Passwort", "Password") + "<input name='wpass' type='password' placeholder='" + unchanged + "' autocomplete='new-password'></label></div>"
+       "<div class='card'><h2>MQTT</h2>"
+       "<div class='row'><label>Broker<input name='mhost' placeholder='" + T("leer = MQTT aus", "empty = MQTT off") + "' value=\"" + esc(mqttHost) + "\"></label>"
+       "<label>Port<input name='mport' type='number' min='1' max='65535' value='" + String(mqttPort) + "'></label></div>"
+       "<div class='row'><label>" + T("Benutzer", "User") + "<input name='muser' autocomplete='off' value=\"" + esc(mqttUser) + "\"></label>"
+       "<label>" + T("Passwort", "Password") + "<input name='mpass' type='password' placeholder='" + unchanged + "' autocomplete='new-password'></label></div>"
+       "<div class='row'><label>Topic<input name='mtopic' value=\"" + esc(mqttTopic) + "\"></label>"
+       "<label>" + T("Sendeintervall (s)", "Publish interval (s)") + "<input name='mqttSec' type='number' min='10' max='3600' required value='" + String(mqttSec) + "'></label></div>"
+       "<p class='hint'>" + T("Sendet den zuletzt gemessenen Wert, 10–3600 s. Kürzer als das Messintervall bringt keine neuen Werte.",
+                              "Publishes the latest measured value, 10–3600 s. Shorter than the measuring interval brings no new values.") + "</p></div></section>"
+       // tab 2: calibration
+       "<section><div class='card'><h2>" + T("Kalibrierung", "Calibration") + "</h2><div class='live'>" + live + "</div>"
+       "<div class='mut'>" + T("aktueller Messwert", "current reading") + "</div>"
+       "<div class='row'><label>" + T("Messbereich Sensor (mm)", "Sensor range (mm)") + "<input name='range' type='number' step='any' value='" + String(rangeMm) + "'></label>"
+       "<label>Shunt (Ω)<input name='shunt' type='number' step='any' value='" + String(shuntOhm) + "'></label></div>"
+       "<p class='hint'>" + T("Shunt = Messwiderstand auf der Platine, an dem der Sensorstrom (4–20 mA) in eine Spannung umgewandelt wird "
+                              "(2 × 150 Ω parallel = 75 Ω). Muss normalerweise nicht geändert werden – nur nach Tausch des Widerstands "
+                              "oder zur Feinkalibrierung mit dem per Multimeter gemessenen Wert.",
+                              "Shunt = sense resistor on the board that converts the sensor current (4–20 mA) into a voltage "
+                              "(2 × 150 Ω in parallel = 75 Ω). Normally no need to change it – only after replacing the resistor "
+                              "or for fine calibration with the value measured by multimeter.") + "</p>"
+       "<div class='row'><label>Offset (mm)<input name='offset' type='number' step='any' value='" + String(offsetMm) + "'></label>"
+       "<label>" + T("oder Ist-Füllstand jetzt (mm)", "or actual level now (mm)") + "<input name='actual' type='number' step='any' placeholder='" +
+       T("→ Offset berechnen", "→ compute offset") + "'></label></div>"
+       "<label>" + T("Messintervall (s)", "Measuring interval (s)") + "<input name='measureSec' type='number' min='10' max='300' required value='" + String(measureSec) + "'></label>"
+       "<p class='hint'>" + T("Wie oft der Sensor abgefragt wird, 10–300 s. Der Verlauf speichert unabhängig davon alle 5 min einen Wert.",
+                              "How often the sensor is read, 10–300 s. The history stores a value every 5 min regardless.") + "</p></div></section>"
+       // tab 3: access
+       "<section><div class='card'><h2>" + T("Login Weboberfläche / OTA", "Login web interface / OTA") + "</h2>"
+       "<div class='row'><label>" + T("Benutzer", "User") + "<input name='user' autocomplete='username' value=\"" + esc(webUser) + "\"></label>"
+       "<label>" + T("Neues Passwort", "New password") + "<input name='pass' type='password' placeholder='" + unchanged + "' autocomplete='new-password'" + (defaultPass() ? " required" : "") + "></label></div></div></section>"
+       "<div class='bar'><button class='btn'>" + T("Speichern", "Save") + "</button></div></form>"
+       "<script>const S=document.querySelectorAll('section'),B=document.querySelectorAll('.tabs button'),"
+       "show=i=>{tab.value=i;S.forEach((s,j)=>s.hidden=j!=i);B.forEach((b,j)=>b.className=j==i?'on':'')};"
+       "B.forEach((b,i)=>b.onclick=()=>show(i));show(tab.value);"
+       // WiFi list loads in the background: /scan answers 202 while scanning, max. 15 tries; button locked + spinner meanwhile
+       "const done=()=>{sb.disabled=0;sb.className=''},scan=k=>{sb.disabled=1;sb.className='spin';"
+       "fetch('/scan').then(r=>r.status==200?r.text().then(t=>{nets.innerHTML=t;done()}):k?setTimeout(scan,1000,k-1):done(),done)};"
+       "sb.onclick=()=>scan(15);scan(15);"
+       // invalid field in a hidden tab: switch there, else the browser can't show the error
+       "document.forms[0].addEventListener('invalid',e=>show([...S].findIndex(s=>s.contains(e.target))),true)</script>"
+       "</main></body></html>";
+  server.send(200, "text/html", h);
+}
+
+void handleConfig() {
+  setLang();
+  if (!auth()) return;
+  sendConfig();
+}
+
+void handleScan() {  // async WiFi scan (~2 s): 202 while running, then <option>s, strongest first
+  if (!auth()) return;
+  int n = WiFi.scanComplete();
+  if (n < 0) {  // WIFI_SCAN_RUNNING, or WIFI_SCAN_FAILED = none started yet -> start one
+    if (n == WIFI_SCAN_FAILED) WiFi.scanNetworks(true);
+    server.send(202, "text/plain", "");
+    return;
+  }
+  String nets, seen = "\n";
+  for (int i = 0; i < n; i++) {
     String id = WiFi.SSID(i);
     if (!id.length() || seen.indexOf("\n" + id + "\n") >= 0) continue;  // skip hidden/duplicates
     seen += id + "\n";
     nets += "<option value=\"" + esc(id) + "\">" + WiFi.RSSI(i) + " dBm</option>";
   }
-  WiFi.scanDelete();
-  nets += "</datalist>";
-  String h = String(HEAD) + "<div class='hd'><h1>Einstellungen</h1><a href='/'>&larr; Füllstand</a></div>";
-  if (apMode) h += "<div class='msg err'><b>Access-Point-Modus:</b> " + esc(apReason) + " Neuer Versuch alle 10 min.</div>";
-  if (msg.length()) h += "<div class='msg " + String(msg.startsWith("Gespeichert") ? "ok" : "err") + "'>" + msg + "</div>";
-  h += "<form method='post'>"
-       "<div class='card'><h2>WLAN</h2>"
-       "<label>Netz (Liste oder eintippen)<input name='ssid' list='nets' value=\"" + esc(ssid) + "\"></label>" + nets +
-       "<label>Passwort<input name='wpass' type='password' placeholder='unverändert' autocomplete='new-password'></label></div>"
-       "<div class='card'><h2>Kalibrierung</h2><div class='live'>" + live + "</div><div class='mut'>aktueller Messwert</div>"
-       "<div class='row'><label>Messbereich Sensor (mm)<input name='range' type='number' step='any' value='" + String(rangeMm) + "'></label>"
-       "<label>Shunt (Ω)<input name='shunt' type='number' step='any' value='" + String(shuntOhm) + "'></label></div>"
-       "<p class='hint'>Shunt = Messwiderstand auf der Platine, an dem der Sensorstrom (4–20 mA) in eine Spannung umgewandelt wird "
-       "(2 × 150 Ω parallel = 75 Ω). Muss normalerweise nicht geändert werden – nur nach Tausch des Widerstands "
-       "oder zur Feinkalibrierung mit dem per Multimeter gemessenen Wert.</p>"
-       "<div class='row'><label>Offset (mm)<input name='offset' type='number' step='any' value='" + String(offsetMm) + "'></label>"
-       "<label>oder Ist-Füllstand jetzt (mm)<input name='actual' type='number' step='any' placeholder='→ Offset berechnen'></label></div>"
-       "<label>Messintervall (s)<input name='measureSec' type='number' min='10' max='300' required value='" + String(measureSec) + "'></label>"
-       "<p class='hint'>Wie oft der Sensor abgefragt wird, 10–300 s. Der Verlauf speichert unabhängig davon alle 5 min einen Wert.</p></div>"
-       "<div class='card'><h2>MQTT</h2>"
-       "<div class='row'><label>Broker<input name='mhost' placeholder='leer = MQTT aus' value=\"" + esc(mqttHost) + "\"></label>"
-       "<label>Port<input name='mport' type='number' min='1' max='65535' value='" + String(mqttPort) + "'></label></div>"
-       "<div class='row'><label>Benutzer<input name='muser' autocomplete='off' value=\"" + esc(mqttUser) + "\"></label>"
-       "<label>Passwort<input name='mpass' type='password' placeholder='unverändert' autocomplete='new-password'></label></div>"
-       "<div class='row'><label>Topic<input name='mtopic' value=\"" + esc(mqttTopic) + "\"></label>"
-       "<label>Sendeintervall (s)<input name='mqttSec' type='number' min='10' max='3600' required value='" + String(mqttSec) + "'></label></div>"
-       "<p class='hint'>Sendet den zuletzt gemessenen Wert, 10–3600 s. Kürzer als das Messintervall bringt keine neuen Werte.</p></div>"
-       "<div class='card'><h2>Login Weboberfläche / OTA</h2>"
-       "<div class='row'><label>Benutzer<input name='user' autocomplete='username' value=\"" + esc(webUser) + "\"></label>"
-       "<label>Neues Passwort<input name='pass' type='password' placeholder='unverändert' autocomplete='new-password'></label></div></div>"
-       "<div class='bar'><button class='btn'>Speichern</button></div></form></main></body></html>";
-  server.send(200, "text/html", h);
-}
-
-void handleConfig() {
-  if (!auth()) return;
-  sendConfig("");
+  WiFi.scanDelete();  // next call starts a fresh scan
+  server.send(200, "text/html", nets);
 }
 
 void handleSave() {
+  setLang();
   if (!auth()) return;
-  String msg = "Gespeichert.";
+  if (defaultPass() && (!server.arg("pass").length() || server.arg("pass") == DEFAULT_PASS)) {
+    sendConfig(T("Bitte ein anderes Passwort als das Standardpasswort wählen.", "Please choose a password other than the default."), true);
+    return;
+  }
+  String msg = T("Gespeichert.", "Saved.");
+  bool err = false;
   bool wifiChanged = server.arg("ssid") != ssid || server.arg("wpass").length();
   ssid = server.arg("ssid");
   if (server.arg("wpass").length()) wifiPass = server.arg("wpass");
@@ -354,7 +439,10 @@ void handleSave() {
   if (server.arg("actual").length()) {  // measured actual level -> compute offset
     float mA = readMa();
     if (maOk(mA)) offsetMm = server.arg("actual").toFloat() - maToMmRaw(mA);
-    else msg = "Sensorfehler - Ist-Wert nicht uebernommen, Rest gespeichert.";
+    else {
+      msg = T("Sensorfehler - Ist-Wert nicht übernommen, Rest gespeichert.", "Sensor error - actual level not applied, rest saved.");
+      err = true;
+    }
   }
   savePrefs();
   ArduinoOTA.setPassword(webPass.c_str());
@@ -363,11 +451,11 @@ void handleSave() {
   lastMa = readMa();
   lastMm = maToMm(lastMa);
   if (wifiChanged) {
-    server.send(200, "text/html", String(HEAD) + "<div class='msg ok'>WLAN gespeichert, starte neu …</div></main></body></html>");
+    server.send(200, "text/html", head() + "<div class='msg ok'>" + T("WLAN gespeichert, starte neu …", "WiFi saved, restarting …") + "</div></main></body></html>");
     delay(1000);
     restart();
   }
-  sendConfig(msg);
+  sendConfig(msg, err);
 }
 
 //*********************************************************************
@@ -461,7 +549,7 @@ void report(const tm& t) {
                   (int)(dayDate[d] % 100), (int)(dayDate[d] / 100 % 100), level[d][0], level[d][48], level[d][96], level[d][144], level[d][192], level[d][240]);  // Telnet: 4 h grid only
   }
   snprintf(buf + p, sizeof buf - p, "C U R R E N T: %.2f mA;  %d mm;  RSSI %d dBm%s\r\n%s\r\n",
-           lastMa, lastMm, WiFi.RSSI(), apMode ? (";  ACCESS POINT MODE: " + apReason).c_str() : "", errorText());
+           lastMa, lastMm, WiFi.RSSI(), apMode ? (";  ACCESS POINT MODE: " + apReason(true)).c_str() : "", errorText(true));
 }
 
 //*********************************************************************
@@ -500,10 +588,13 @@ void setup() {
   configTzTime(TZ_INFO, NTP_SERVER);
   MDNS.begin(HOSTNAME);
 
+  const char* hdrs[] = {"Cookie", "Accept-Language"};  // for setLang()
+  server.collectHeaders(hdrs, 2);
   server.on("/", HTTP_GET, handleRoot);
   server.on("/history", HTTP_GET, handleHistory);
   server.on("/config", HTTP_GET, handleConfig);
   server.on("/config", HTTP_POST, handleSave);
+  server.on("/scan", HTTP_GET, handleScan);
   server.begin();
   telnet.begin();
 
@@ -519,7 +610,7 @@ void setup() {
 }
 
 void loop() {
-  ArduinoOTA.handle();
+  if (!apMode && !defaultPass()) ArduinoOTA.handle();  // OTA off in AP mode (public AP password) and with the default password
   server.handleClient();
   mqtt.loop();
   if (telnet.hasClient()) telnetClient = telnet.accept();  // new client replaces the old one

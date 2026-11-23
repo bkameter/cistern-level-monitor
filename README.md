@@ -5,7 +5,7 @@ Water level monitoring for cisterns and water tanks: a submersible pressure sens
 ESP32-C3 and an ADS1115 measures the loop current and provides level and history over
 WiFi – via web interface and MQTT.
 
-The web interface is in German. The assembly drawing is available in English and [German](docs/assembly-de.png).
+The web interface is available in German and English (browser language, switchable via link). The assembly drawing is available in English and [German](docs/assembly-de.png).
 
 ![Assembly cistern-esp32 v1.1](docs/assembly.png)
 
@@ -64,6 +64,10 @@ LOLIN C3 mini, ADS1115 module and sensor are sourced separately.
 Arduino IDE with the ESP32 board package, board "LOLIN C3 Mini". Required libraries:
 `Adafruit ADS1X15`, `PubSubClient`.
 
+`firmware/cistern/partitions.csv` replaces the default partition table (2 × 1.56 MB app,
+768 KB LittleFS, room for ~33 months of history). The IDE still shows the size against the default
+1.25 MB limit. Switching an existing device to this table needs one USB flash and erases the history.
+
 Features:
 
 - Web interface: `/` shows the level, `/config` the settings
@@ -75,7 +79,9 @@ Features:
 - Factory reset: hold the BOOT button for 2 s within the first 5 s after power-up
 
 > **Change the default credentials!** Access point password and web login are
-> `zisterne` / `zisterne:zisterne` out of the box.
+> `zisterne` / `zisterne:zisterne` out of the box. Until the web password is
+> changed, `/config` only offers the "Access" tab and OTA updates are disabled.
+> OTA is also disabled in access point mode.
 
 ## Inspiration and credits
 
