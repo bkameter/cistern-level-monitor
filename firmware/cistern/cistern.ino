@@ -171,7 +171,7 @@ String apReason(bool e) {  // shown on /config and Telnet
   ".seg button{padding:4px 10px;border:0;border-radius:6px;background:none;color:var(--mut);font:inherit;font-size:13px;cursor:pointer}" \
   ".seg button.on{background:var(--card);color:var(--fg);box-shadow:0 1px 2px #0003}" \
   ".nv{display:flex;gap:8px;align-items:center;margin-bottom:8px}.nv input{margin:0;text-align:center}" \
-  ".nv button{background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer}" \
+  ".nv button,.scan button{background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer}" \
   "button:disabled{opacity:.4;cursor:default}" \
   ".cw{position:relative}svg{width:100%;height:auto;overflow:visible;touch-action:pan-y}svg text{fill:var(--mut);font-size:11px}" \
   ".g{stroke:var(--line)}.l{fill:none;stroke:var(--acc);stroke-width:2;stroke-linejoin:round}circle{fill:var(--acc)}" \
@@ -182,6 +182,9 @@ String apReason(bool e) {  // shown on /config and Telnet
   "input{display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:9px 10px;font:inherit;color:var(--fg);" \
   "background:var(--bg);border:1px solid var(--line);border-radius:8px}" \
   "input:focus{outline:2px solid var(--acc);outline-offset:-1px}" \
+  ".scan{display:flex;gap:8px;margin-top:4px}.scan input{margin:0}" \
+  ".spin::before{content:'';display:inline-block;width:.8em;height:.8em;margin-right:6px;vertical-align:-1px;" \
+  "border:2px solid;border-right-color:transparent;border-radius:50%;animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(1turn)}}" \
   ".row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0 12px}" \
   ".live{font-size:22px;font-weight:600;margin-top:4px}.hint{margin:6px 0 0;font-size:12px;color:var(--mut)}" \
   ".msg{padding:10px 14px;border-radius:8px;margin-bottom:16px}.ok{background:#2e9d4f22;border:1px solid #2e9d4f66}" \
@@ -318,15 +321,6 @@ void sendConfig(const String& msg = "", bool err = false) {
   char live[80];
   if (lastMm < 0) snprintf(live, sizeof live, "%s", errorText(en));
   else snprintf(live, sizeof live, "%.2f mA = %d mm", lastMa, lastMm);
-  String nets = "<datalist id='nets'>", seen = "\n";  // WiFi scan, takes ~2 s, strongest first
-  for (int i = 0, n = WiFi.scanNetworks(); i < n; i++) {
-    String id = WiFi.SSID(i);
-    if (!id.length() || seen.indexOf("\n" + id + "\n") >= 0) continue;  // skip hidden/duplicates
-    seen += id + "\n";
-    nets += "<option value=\"" + esc(id) + "\">" + WiFi.RSSI(i) + " dBm</option>";
-  }
-  WiFi.scanDelete();
-  nets += "</datalist>";
   String unchanged = T("unverändert", "unchanged");
   String h = head() + "<div class='hd'><h1>" + T("Einstellungen", "Settings") + "</h1><span>"
              "<a href='?lang=" + T("en'>English", "de'>Deutsch") + "</a> · <a href='/'>&larr; " + T("Füllstand", "Level") + "</a></span></div>";
@@ -346,7 +340,8 @@ void sendConfig(const String& msg = "", bool err = false) {
        "<button type='button'>" + T("Zugang", "Access") + "</button></nav>"
        // tab 1: connectivity
        "<section><div class='card'><h2>" + T("WLAN", "WiFi") + "</h2>"
-       "<label>" + T("Netz (Liste oder eintippen)", "Network (pick or type)") + "<input name='ssid' list='nets' value=\"" + esc(ssid) + "\"></label>" + nets +
+       "<label>" + T("Netz (Liste oder eintippen)", "Network (pick or type)") + "<div class='scan'><input name='ssid' list='nets' value=\"" + esc(ssid) + "\">"
+       "<button type='button' id='sb'>" + T("Suchen", "Scan") + "</button></div></label><datalist id='nets'></datalist>"
        "<label>" + T("Passwort", "Password") + "<input name='wpass' type='password' placeholder='" + unchanged + "' autocomplete='new-password'></label></div>"
        "<div class='card'><h2>MQTT</h2>"
        "<div class='row'><label>Broker<input name='mhost' placeholder='" + T("leer = MQTT aus", "empty = MQTT off") + "' value=\"" + esc(mqttHost) + "\"></label>"
@@ -382,6 +377,10 @@ void sendConfig(const String& msg = "", bool err = false) {
        "<script>const S=document.querySelectorAll('section'),B=document.querySelectorAll('.tabs button'),"
        "show=i=>{tab.value=i;S.forEach((s,j)=>s.hidden=j!=i);B.forEach((b,j)=>b.className=j==i?'on':'')};"
        "B.forEach((b,i)=>b.onclick=()=>show(i));show(tab.value);"
+       // WiFi list loads in the background: /scan answers 202 while scanning, max. 15 tries; button locked + spinner meanwhile
+       "const done=()=>{sb.disabled=0;sb.className=''},scan=k=>{sb.disabled=1;sb.className='spin';"
+       "fetch('/scan').then(r=>r.status==200?r.text().then(t=>{nets.innerHTML=t;done()}):k?setTimeout(scan,1000,k-1):done(),done)};"
+       "sb.onclick=()=>scan(15);scan(15);"
        // invalid field in a hidden tab: switch there, else the browser can't show the error
        "document.forms[0].addEventListener('invalid',e=>show([...S].findIndex(s=>s.contains(e.target))),true)</script>"
        "</main></body></html>";
@@ -392,6 +391,25 @@ void handleConfig() {
   setLang();
   if (!auth()) return;
   sendConfig();
+}
+
+void handleScan() {  // async WiFi scan (~2 s): 202 while running, then <option>s, strongest first
+  if (!auth()) return;
+  int n = WiFi.scanComplete();
+  if (n < 0) {  // WIFI_SCAN_RUNNING, or WIFI_SCAN_FAILED = none started yet -> start one
+    if (n == WIFI_SCAN_FAILED) WiFi.scanNetworks(true);
+    server.send(202, "text/plain", "");
+    return;
+  }
+  String nets, seen = "\n";
+  for (int i = 0; i < n; i++) {
+    String id = WiFi.SSID(i);
+    if (!id.length() || seen.indexOf("\n" + id + "\n") >= 0) continue;  // skip hidden/duplicates
+    seen += id + "\n";
+    nets += "<option value=\"" + esc(id) + "\">" + WiFi.RSSI(i) + " dBm</option>";
+  }
+  WiFi.scanDelete();  // next call starts a fresh scan
+  server.send(200, "text/html", nets);
 }
 
 void handleSave() {
@@ -576,6 +594,7 @@ void setup() {
   server.on("/history", HTTP_GET, handleHistory);
   server.on("/config", HTTP_GET, handleConfig);
   server.on("/config", HTTP_POST, handleSave);
+  server.on("/scan", HTTP_GET, handleScan);
   server.begin();
   telnet.begin();
 
