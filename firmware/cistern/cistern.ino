@@ -405,7 +405,9 @@ void sendConfig(const String& msg = "", bool err = false) {
        "fetch('/scan').then(r=>r.status==200?r.text().then(t=>{nets.innerHTML=t;done()}):k?setTimeout(scan,1000,k-1):done(),done)};"
        "sb.onclick=()=>scan(15);scan(15);"
        // invalid field in a hidden tab: switch there, else the browser can't show the error
-       "document.forms[0].addEventListener('invalid',e=>show([...S].findIndex(s=>s.contains(e.target))),true)</script>"
+       "document.forms[0].addEventListener('invalid',e=>show([...S].findIndex(s=>s.contains(e.target))),true);"
+       // saving can take a few seconds (MQTT/TLS connect for the test value): lock button + spinner like the WiFi scan
+       "document.forms[0].addEventListener('submit',()=>{const b=document.querySelector('.btn');b.disabled=1;b.classList.add('spin')})</script>"
        "</main></body></html>";
   server.send(200, "text/html", h);
 }
