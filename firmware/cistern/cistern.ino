@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Benjamin – https://github.com/bkameter/cistern-level-monitor
 // Developed with the help of Claude Code (Anthropic), https://claude.com/claude-code
-#define VERS "cistern-esp32 1.1, 23.11.2026"
+#define VERS "cistern-esp32 1.2, 26.11.2026"
 // Cistern level gauge, LOLIN C3 mini + ADS1115 + 4-20 mA pressure sensor
 // Web: / level (public), /config settings (login zisterne:zisterne), German/English (?lang=de|en); Telnet port 23, MQTT, OTA
 // History: 5-min values, 1 year in LittleFS (/h/YYYYMM.bin), served as /history?m=YYYYMM (31x288 int16, -1 = empty)
