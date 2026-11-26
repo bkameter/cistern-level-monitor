@@ -14,6 +14,7 @@
 #include <ArduinoOTA.h>
 #include <Preferences.h>
 #include <PubSubClient.h>
+#include <WiFiClientSecure.h>
 #include <Wire.h>
 #include <Adafruit_ADS1X15.h>
 #include <time.h>
@@ -36,6 +37,8 @@ Preferences prefs;
 String ssid, wifiPass, webUser, webPass;
 String mqttHost, mqttUser, mqttPass, mqttTopic;   // empty mqttHost = MQTT off
 int mqttPort;
+int mqttTls;    // 0 = plain, 1 = TLS without server check, 2 = TLS, server checked against mqttCa
+String mqttCa;  // PEM, CA certificate of the broker (mode 2)
 int measureSec, mqttSec;   // intervals: measuring 10-300 s (history needs a value every 5 min), MQTT 10-3600 s
 float rangeMm, shuntOhm, offsetMm;   // calibration, adjustable via /config
 // shuntOhm: sense resistor converting the 4-20 mA loop current into a voltage for the ADS1115 (I = U / R).
@@ -47,6 +50,7 @@ WebServer server(80);
 WiFiServer telnet(23);
 WiFiClient telnetClient;
 WiFiClient mqttNet;
+WiFiClientSecure mqttTlsNet;
 PubSubClient mqtt(mqttNet);
 bool apMode = false;
 wl_status_t apStatus;         // why AP mode, see apReason()
@@ -78,6 +82,8 @@ void loadPrefs() {  // keys are persisted: renaming one loses its stored value
   mqttUser  = prefs.getString("mqttUser", "");
   mqttPass  = prefs.getString("mqttPass", "");
   mqttTopic = prefs.getString("mqttTopic", "Wasserstand-Zisterne");
+  mqttTls   = prefs.getInt("mqttTls", 0);
+  mqttCa    = prefs.getString("mqttCa", "");
   measureSec = prefs.getInt("measureSec", 10);
   mqttSec   = prefs.getInt("mqttSec", 60);
 }
@@ -95,6 +101,8 @@ void savePrefs() {
   prefs.putString("mqttUser", mqttUser);
   prefs.putString("mqttPass", mqttPass);
   prefs.putString("mqttTopic", mqttTopic);
+  prefs.putInt("mqttTls", mqttTls);
+  prefs.putString("mqttCa", mqttCa);
   prefs.putInt("measureSec", measureSec);
   prefs.putInt("mqttSec", mqttSec);
 }
@@ -179,9 +187,9 @@ String apReason(bool e) {  // shown on /config and Telnet
   ".tip{position:absolute;pointer-events:none;background:var(--fg);color:var(--bg);padding:6px 9px;border-radius:6px;font-size:13px;white-space:nowrap}" \
   /* form */ \
   "label{display:block;margin-top:12px;font-size:13px;color:var(--mut)}" \
-  "input{display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:9px 10px;font:inherit;color:var(--fg);" \
+  "input,select,textarea{display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:9px 10px;font:inherit;color:var(--fg);" \
   "background:var(--bg);border:1px solid var(--line);border-radius:8px}" \
-  "input:focus{outline:2px solid var(--acc);outline-offset:-1px}" \
+  "textarea{font:12px monospace}input:focus,select:focus,textarea:focus{outline:2px solid var(--acc);outline-offset:-1px}" \
   ".scan{display:flex;gap:8px;margin-top:4px}.scan input{margin:0}" \
   ".spin::before{content:'';display:inline-block;width:.8em;height:.8em;margin-right:6px;vertical-align:-1px;" \
   "border:2px solid;border-right-color:transparent;border-radius:50%;animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(1turn)}}" \
@@ -322,6 +330,11 @@ void sendConfig(const String& msg = "", bool err = false) {
   if (lastMm < 0) snprintf(live, sizeof live, "%s", errorText(en));
   else snprintf(live, sizeof live, "%.2f mA = %d mm", lastMa, lastMm);
   String unchanged = T("unverändert", "unchanged");
+  const char* tlsDe[] = {"Aus", "Verschlüsselt, ohne Serverprüfung", "Verschlüsselt, mit Serverprüfung"};
+  const char* tlsEn[] = {"Off", "Encrypted, no server check", "Encrypted, with server check"};
+  String tlsOpt;
+  for (int i = 0; i < 3; i++)
+    tlsOpt += "<option value='" + String(i) + "'" + (mqttTls == i ? " selected" : "") + ">" + T(tlsDe[i], tlsEn[i]) + "</option>";
   String h = head() + "<div class='hd'><h1>" + T("Einstellungen", "Settings") + "</h1><span>"
              "<a href='?lang=" + T("en'>English", "de'>Deutsch") + "</a> · <a href='/'>&larr; " + T("Füllstand", "Level") + "</a></span></div>";
   if (apMode) h += "<div class='msg err'><b>" + T("Access-Point-Modus:", "Access point mode:") + "</b> " + esc(apReason(en)) +
@@ -346,12 +359,22 @@ void sendConfig(const String& msg = "", bool err = false) {
        "<div class='card'><h2>MQTT</h2>"
        "<div class='row'><label>Broker<input name='mhost' placeholder='" + T("leer = MQTT aus", "empty = MQTT off") + "' value=\"" + esc(mqttHost) + "\"></label>"
        "<label>Port<input name='mport' type='number' min='1' max='65535' value='" + String(mqttPort) + "'></label></div>"
+       "<label>TLS<select name='mtls'>" + tlsOpt + "</select></label>"
+       "<label>" + T("CA-Zertifikat (PEM, nur mit Serverprüfung)", "CA certificate (PEM, server check only)") +
+       "<textarea name='mca' rows='3' maxlength='3900' placeholder='-----BEGIN CERTIFICATE-----'>" + esc(mqttCa) + "</textarea></label>"
+       "<p class='hint'>" + T("TLS meist an Port 8883. Mit Serverprüfung muss der Broker-Name zum Zertifikat passen.",
+                              "TLS usually on port 8883. With server check, the broker name must match the certificate.") + "</p>"
        "<div class='row'><label>" + T("Benutzer", "User") + "<input name='muser' autocomplete='off' value=\"" + esc(mqttUser) + "\"></label>"
        "<label>" + T("Passwort", "Password") + "<input name='mpass' type='password' placeholder='" + unchanged + "' autocomplete='new-password'></label></div>"
        "<div class='row'><label>Topic<input name='mtopic' value=\"" + esc(mqttTopic) + "\"></label>"
        "<label>" + T("Sendeintervall (s)", "Publish interval (s)") + "<input name='mqttSec' type='number' min='10' max='3600' required value='" + String(mqttSec) + "'></label></div>"
        "<p class='hint'>" + T("Sendet den zuletzt gemessenen Wert, 10–3600 s. Kürzer als das Messintervall bringt keine neuen Werte.",
-                              "Publishes the latest measured value, 10–3600 s. Shorter than the measuring interval brings no new values.") + "</p></div></section>"
+                              "Publishes the latest measured value, 10–3600 s. Shorter than the measuring interval brings no new values.") + "</p>"
+       "<label>" + T("Testwert (mm)", "Test value (mm)") + "<input name='mtest' type='number' min='0' max='65535' placeholder='" + T("optional", "optional") + "'></label>"
+       "<p class='hint'>" + T("Wird beim Speichern einmal gesendet, z. B. zum Testen von Home Assistant ohne Sensor. Der nächste echte Messwert ersetzt ihn. "
+                              "Home Assistant findet die Zisterne automatisch (MQTT-Discovery).",
+                              "Sent once on saving, e.g. to test Home Assistant without a sensor. The next real reading replaces it. "
+                              "Home Assistant finds the cistern automatically (MQTT discovery).") + "</p></div></section>"
        // tab 2: calibration
        "<section><div class='card'><h2>" + T("Kalibrierung", "Calibration") + "</h2><div class='live'>" + live + "</div>"
        "<div class='mut'>" + T("aktueller Messwert", "current reading") + "</div>"
@@ -382,9 +405,37 @@ void sendConfig(const String& msg = "", bool err = false) {
        "fetch('/scan').then(r=>r.status==200?r.text().then(t=>{nets.innerHTML=t;done()}):k?setTimeout(scan,1000,k-1):done(),done)};"
        "sb.onclick=()=>scan(15);scan(15);"
        // invalid field in a hidden tab: switch there, else the browser can't show the error
-       "document.forms[0].addEventListener('invalid',e=>show([...S].findIndex(s=>s.contains(e.target))),true)</script>"
+       "document.forms[0].addEventListener('invalid',e=>show([...S].findIndex(s=>s.contains(e.target))),true);"
+       // saving can take a few seconds (MQTT/TLS connect for the test value): lock button + spinner like the WiFi scan
+       "document.forms[0].addEventListener('submit',()=>{const b=document.querySelector('.btn');b.disabled=1;b.classList.add('spin')})</script>"
        "</main></body></html>";
   server.send(200, "text/html", h);
+}
+
+// After loading/saving the settings. The clients keep only pointers, mqttHost/mqttCa must stay global.
+void mqttApply() {
+  mqtt.setServer(mqttHost.c_str(), mqttPort);
+  if (mqttTls == 2) mqttTlsNet.setCACert(mqttCa.c_str());  // also checks the broker name against the certificate
+  else mqttTlsNet.setInsecure();
+  if (mqttTls) mqtt.setClient(mqttTlsNet);
+  else mqtt.setClient(mqttNet);
+}
+
+// Connects if needed. On every new connection the sensor is (re)announced to Home Assistant
+// (MQTT discovery, retained), so a changed topic or interval reaches HA after saving.
+bool mqttConnect() {
+  if (mqtt.connected()) return true;
+  String id = WiFi.macAddress();  // unique per device: client ID and HA IDs, several cisterns on one broker
+  id.replace(":", "");
+  id.toLowerCase();
+  id = "zisterne_" + id;
+  if (!mqtt.connect(id.c_str(), mqttUser.c_str(), mqttPass.c_str())) return false;
+  String cfg = "{\"name\":null,\"uniq_id\":\"" + id + "_level\",\"stat_t\":\"" + mqttTopic + "\",\"unit_of_meas\":\"mm\","
+               "\"dev_cla\":\"distance\",\"stat_cla\":\"measurement\",\"exp_aft\":" + String(3 * mqttSec) + ",\"ic\":\"mdi:water\","
+               "\"dev\":{\"ids\":[\"" + id + "\"],\"name\":\"" + HOSTNAME + "\",\"mdl\":\"cistern-esp32\",\"sw\":\"" VERS "\","
+               "\"cu\":\"http://" + WiFi.localIP().toString() + "/config\"}}";
+  mqtt.publish(("homeassistant/sensor/" + id + "/config").c_str(), cfg.c_str(), true);
+  return true;
 }
 
 void handleConfig() {
@@ -434,6 +485,9 @@ void handleSave() {
   mqttUser = server.arg("muser");
   if (server.arg("mpass").length()) mqttPass = server.arg("mpass");
   if (server.arg("mtopic").length()) mqttTopic = server.arg("mtopic");
+  mqttTls = constrain(server.arg("mtls").toInt(), 0, 2);
+  mqttCa = server.arg("mca");
+  mqttCa.trim();
   if (server.arg("measureSec").length()) measureSec = constrain(server.arg("measureSec").toInt(), 10, 300);
   if (server.arg("mqttSec").length()) mqttSec = constrain(server.arg("mqttSec").toInt(), 10, 3600);
   if (server.arg("actual").length()) {  // measured actual level -> compute offset
@@ -447,13 +501,30 @@ void handleSave() {
   savePrefs();
   ArduinoOTA.setPassword(webPass.c_str());
   mqtt.disconnect();                         // next publish reconnects with the new settings
-  mqtt.setServer(mqttHost.c_str(), mqttPort);
+  mqttApply();
   lastMa = readMa();
   lastMm = maToMm(lastMa);
   if (wifiChanged) {
     server.send(200, "text/html", head() + "<div class='msg ok'>" + T("WLAN gespeichert, starte neu …", "WiFi saved, restarting …") + "</div></main></body></html>");
     delay(1000);
     restart();
+  }
+  if (server.arg("mtest").length()) {  // test value: sent once now, the next regular publish replaces it
+    String v = String(server.arg("mtest").toInt());
+    if (!apMode && mqttHost.length() && mqttConnect() && mqtt.publish(mqttTopic.c_str(), v.c_str()))
+      msg += T(" Testwert ", " Test value ") + v + T(" mm gesendet an ", " mm sent to ") + esc(mqttTopic) + ".";
+    else {
+      int s = mqtt.state();
+      char tlsErr[80] = "";
+      if (mqttTls) mqttTlsNet.lastError(tlsErr, sizeof tlsErr);  // e.g. certificate verify failed
+      msg += T(" Testwert nicht gesendet: ", " Test value not sent: ") +
+             (apMode ? T("Access-Point-Modus.", "access point mode.")
+              : !mqttHost.length() ? T("kein Broker eingetragen.", "no broker set.")
+              : mqttTls == 2 && !mqttCa.length() ? T("kein CA-Zertifikat eingetragen.", "no CA certificate set.")
+              : s == 4 || s == 5 ? T("Benutzer/Passwort falsch.", "wrong user/password.")
+              : String(T("Broker nicht erreichbar (Code ", "broker not reachable (code ") + s + (tlsErr[0] ? String(", ") + esc(tlsErr) : "") + ")."));
+      err = true;
+    }
   }
   sendConfig(msg, err);
 }
@@ -605,7 +676,8 @@ void setup() {
   });
   ArduinoOTA.begin();
 
-  mqtt.setServer(mqttHost.c_str(), mqttPort);  // keeps only the pointer, mqttHost must stay global
+  mqttApply();
+  mqtt.setBufferSize(768);                     // discovery message ~400 bytes, default 256 is too small
   digitalWrite(LED_BUILTIN, apMode);  // LED stays on in AP mode
 }
 
@@ -620,8 +692,7 @@ void loop() {
   static unsigned long tMqtt = 0;  // MQTT: publishes the latest value, independent of the measuring interval
   if (!apMode && lastMm >= 0 && mqttHost.length() && millis() - tMqtt >= mqttSec * 1000UL) {
     tMqtt = millis();
-    if (!mqtt.connected()) mqtt.connect(HOSTNAME, mqttUser.c_str(), mqttPass.c_str());
-    mqtt.publish(mqttTopic.c_str(), String(lastMm).c_str());
+    if (mqttConnect()) mqtt.publish(mqttTopic.c_str(), String(lastMm).c_str());
   }
 
   static unsigned long tLast = 0;
