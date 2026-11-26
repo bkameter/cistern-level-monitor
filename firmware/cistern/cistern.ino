@@ -351,7 +351,12 @@ void sendConfig(const String& msg = "", bool err = false) {
        "<div class='row'><label>Topic<input name='mtopic' value=\"" + esc(mqttTopic) + "\"></label>"
        "<label>" + T("Sendeintervall (s)", "Publish interval (s)") + "<input name='mqttSec' type='number' min='10' max='3600' required value='" + String(mqttSec) + "'></label></div>"
        "<p class='hint'>" + T("Sendet den zuletzt gemessenen Wert, 10–3600 s. Kürzer als das Messintervall bringt keine neuen Werte.",
-                              "Publishes the latest measured value, 10–3600 s. Shorter than the measuring interval brings no new values.") + "</p></div></section>"
+                              "Publishes the latest measured value, 10–3600 s. Shorter than the measuring interval brings no new values.") + "</p>"
+       "<label>" + T("Testwert (mm)", "Test value (mm)") + "<input name='mtest' type='number' min='0' max='65535' placeholder='" + T("optional", "optional") + "'></label>"
+       "<p class='hint'>" + T("Wird beim Speichern einmal gesendet, z. B. zum Testen von Home Assistant ohne Sensor. Der nächste echte Messwert ersetzt ihn. "
+                              "Home Assistant findet die Zisterne automatisch (MQTT-Discovery).",
+                              "Sent once on saving, e.g. to test Home Assistant without a sensor. The next real reading replaces it. "
+                              "Home Assistant finds the cistern automatically (MQTT discovery).") + "</p></div></section>"
        // tab 2: calibration
        "<section><div class='card'><h2>" + T("Kalibrierung", "Calibration") + "</h2><div class='live'>" + live + "</div>"
        "<div class='mut'>" + T("aktueller Messwert", "current reading") + "</div>"
@@ -385,6 +390,23 @@ void sendConfig(const String& msg = "", bool err = false) {
        "document.forms[0].addEventListener('invalid',e=>show([...S].findIndex(s=>s.contains(e.target))),true)</script>"
        "</main></body></html>";
   server.send(200, "text/html", h);
+}
+
+// Connects if needed. On every new connection the sensor is (re)announced to Home Assistant
+// (MQTT discovery, retained), so a changed topic or interval reaches HA after saving.
+bool mqttConnect() {
+  if (mqtt.connected()) return true;
+  String id = WiFi.macAddress();  // unique per device: client ID and HA IDs, several cisterns on one broker
+  id.replace(":", "");
+  id.toLowerCase();
+  id = "zisterne_" + id;
+  if (!mqtt.connect(id.c_str(), mqttUser.c_str(), mqttPass.c_str())) return false;
+  String cfg = "{\"name\":null,\"uniq_id\":\"" + id + "_level\",\"stat_t\":\"" + mqttTopic + "\",\"unit_of_meas\":\"mm\","
+               "\"dev_cla\":\"distance\",\"stat_cla\":\"measurement\",\"exp_aft\":" + String(3 * mqttSec) + ",\"ic\":\"mdi:water\","
+               "\"dev\":{\"ids\":[\"" + id + "\"],\"name\":\"" + HOSTNAME + "\",\"mdl\":\"cistern-esp32\",\"sw\":\"" VERS "\","
+               "\"cu\":\"http://" + WiFi.localIP().toString() + "/config\"}}";
+  mqtt.publish(("homeassistant/sensor/" + id + "/config").c_str(), cfg.c_str(), true);
+  return true;
 }
 
 void handleConfig() {
@@ -454,6 +476,20 @@ void handleSave() {
     server.send(200, "text/html", head() + "<div class='msg ok'>" + T("WLAN gespeichert, starte neu …", "WiFi saved, restarting …") + "</div></main></body></html>");
     delay(1000);
     restart();
+  }
+  if (server.arg("mtest").length()) {  // test value: sent once now, the next regular publish replaces it
+    String v = String(server.arg("mtest").toInt());
+    if (!apMode && mqttHost.length() && mqttConnect() && mqtt.publish(mqttTopic.c_str(), v.c_str()))
+      msg += T(" Testwert ", " Test value ") + v + T(" mm gesendet an ", " mm sent to ") + esc(mqttTopic) + ".";
+    else {
+      int s = mqtt.state();
+      msg += T(" Testwert nicht gesendet: ", " Test value not sent: ") +
+             (apMode ? T("Access-Point-Modus.", "access point mode.")
+              : !mqttHost.length() ? T("kein Broker eingetragen.", "no broker set.")
+              : s == 4 || s == 5 ? T("Benutzer/Passwort falsch.", "wrong user/password.")
+              : String(T("Broker nicht erreichbar (Code ", "broker not reachable (code ") + s + ")."));
+      err = true;
+    }
   }
   sendConfig(msg, err);
 }
@@ -606,6 +642,7 @@ void setup() {
   ArduinoOTA.begin();
 
   mqtt.setServer(mqttHost.c_str(), mqttPort);  // keeps only the pointer, mqttHost must stay global
+  mqtt.setBufferSize(768);                     // discovery message ~400 bytes, default 256 is too small
   digitalWrite(LED_BUILTIN, apMode);  // LED stays on in AP mode
 }
 
@@ -620,8 +657,7 @@ void loop() {
   static unsigned long tMqtt = 0;  // MQTT: publishes the latest value, independent of the measuring interval
   if (!apMode && lastMm >= 0 && mqttHost.length() && millis() - tMqtt >= mqttSec * 1000UL) {
     tMqtt = millis();
-    if (!mqtt.connected()) mqtt.connect(HOSTNAME, mqttUser.c_str(), mqttPass.c_str());
-    mqtt.publish(mqttTopic.c_str(), String(lastMm).c_str());
+    if (mqttConnect()) mqtt.publish(mqttTopic.c_str(), String(lastMm).c_str());
   }
 
   static unsigned long tLast = 0;

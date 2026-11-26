@@ -17,7 +17,7 @@ The web interface is available in German and English (browser language, switchab
 | `hardware/cistern-esp32/fab/` | Manufacturing data for JLCPCB: Gerber (ZIP), BOM, CPL |
 | `firmware/cistern/` | Arduino firmware (web interface, MQTT, OTA, history) |
 | `firmware/ads1115-test/` | Minimal test sketch: reads the loop current and prints it to serial |
-| `docs/` | Assembly drawing (English PNG + editable SVG source, German PNG) |
+| `docs/` | Assembly drawing (English PNG + editable SVG source, German PNG), Home Assistant guide (EN/DE) |
 
 ## Hardware
 
@@ -72,7 +72,8 @@ Features:
 
 - Web interface: `/` shows the level, `/config` the settings
 - History: 5-minute values for one year in LittleFS
-- MQTT (optional), OTA updates, Telnet log on port 23
+- MQTT (optional), OTA updates, Telnet log on port 23 –
+  see [Home Assistant integration](docs/home-assistant.md) ([Deutsch](docs/home-assistant-de.md))
 - Calibration (range, shunt, offset) via `/config`
 - Without WiFi an access point `Zisterne-Setup` is started, settings at
   `http://192.168.4.1/config`
