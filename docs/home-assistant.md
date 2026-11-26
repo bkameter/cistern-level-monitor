@@ -44,13 +44,37 @@ No login is created here. The cistern only gets the credentials from step 1.
 Open `http://zisterne.local/config` (or the device's IP), tab **Connectivity**, card **MQTT**:
 
 - **Broker**: IP address or hostname of Home Assistant (e.g. `192.168.1.10`)
-- **Port**: `1883`
+- **Port**: `1883` (with TLS usually `8883`)
+- **TLS**: `Off`, see [TLS](#optional-tls)
 - **User / Password**: the login from step 1
 - **Topic**: keep `Wasserstand-Zisterne` or choose your own
 - **Publish interval**: e.g. `60` s
 - **Test value (mm)**: e.g. `1234` – sent once on saving (see below)
 
 Save. An empty broker field turns MQTT off.
+
+### Optional: TLS
+
+With TLS, login and values travel encrypted. The cistern offers three levels (field **TLS**):
+
+| Setting | Protects against | Needs |
+|---|---|---|
+| Off | nothing, plain text | nothing |
+| Encrypted, no server check | eavesdropping | TLS on the broker |
+| Encrypted, with server check | also a fake broker | TLS on the broker + CA certificate on the cistern |
+
+**Broker:** the Mosquitto app accepts TLS on port 8883 once `certfile` and `keyfile` in its
+configuration point to certificate and key in the `/ssl` folder (e.g. from the
+Let's Encrypt or DuckDNS app). See the app's documentation for details.
+
+**Server check:** paste the issuer's certificate in PEM format into the **CA certificate**
+field (`-----BEGIN CERTIFICATE-----` …). For Let's Encrypt that's
+[ISRG Root X1](https://letsencrypt.org/certs/isrgrootx1.pem), for a self-signed
+certificate your own CA. The **Broker** field must then contain the name the certificate
+was issued for (e.g. `myhome.duckdns.org`), not the IP address.
+
+If the connection fails, the test value message shows the TLS error, e.g.
+"X509 - Certificate verification failed".
 
 ## 3. Test
 
@@ -148,9 +172,12 @@ Home Assistant (*MQTT → device → ⋮ → Delete*). That also removes the ret
 
 - **The device only publishes, it subscribes to nothing.** Nobody can control or
   reconfigure the cistern via MQTT. Discovery doesn't change that.
-- **MQTT runs unencrypted** (port 1883, no TLS): login and values travel in plain text
-  over the local network. That's why the cistern gets its own Mosquitto login – a Home
-  Assistant user's password would also unlock the Home Assistant web UI.
+- **Without TLS, MQTT runs unencrypted** (port 1883): login and values travel in plain
+  text over the local network. That's why the cistern gets its own Mosquitto login – a Home
+  Assistant user's password would also unlock the Home Assistant web UI. With
+  [TLS](#optional-tls) the connection is encrypted, with server check also protected
+  against a fake broker. For a broker outside your own network always use TLS with
+  server check.
 - **Anyone with broker access can fake values or discovery messages.** Keep the broker
   password-protected (Mosquitto app default) and don't expose port 1883 to the internet.
 - The discovery message contains the device's MAC and IP – the broker sees those anyway.

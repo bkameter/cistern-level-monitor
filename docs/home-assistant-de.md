@@ -49,13 +49,38 @@ Hier wird kein Login angelegt. Die Zisterne bekommt nur die Zugangsdaten aus Sch
 Karte **MQTT**:
 
 - **Broker**: IP-Adresse oder Hostname von Home Assistant (z. B. `192.168.1.10`)
-- **Port**: `1883`
+- **Port**: `1883` (mit TLS meist `8883`)
+- **TLS**: `Aus`, siehe [TLS](#optional-tls)
 - **Benutzer / Passwort**: das Login aus Schritt 1
 - **Topic**: `Wasserstand-Zisterne` lassen oder eigenes wählen
 - **Sendeintervall**: z. B. `60` s
 - **Testwert (mm)**: z. B. `1234` – wird beim Speichern einmal gesendet (siehe unten)
 
 Speichern. Ein leeres Broker-Feld schaltet MQTT ab.
+
+### Optional: TLS
+
+Mit TLS gehen Login und Werte verschlüsselt durchs Netz. Die Zisterne kennt drei Stufen
+(Feld **TLS**):
+
+| Einstellung | Schutz | Was nötig ist |
+|---|---|---|
+| Aus | keiner, Klartext | nichts |
+| Verschlüsselt, ohne Serverprüfung | gegen Mitlesen | TLS am Broker |
+| Verschlüsselt, mit Serverprüfung | zusätzlich gegen einen falschen Broker | TLS am Broker + CA-Zertifikat in der Zisterne |
+
+**Broker:** Die Mosquitto-App nimmt TLS auf Port 8883 an, sobald in ihrer Konfiguration
+`certfile` und `keyfile` auf Zertifikat und Schlüssel im Ordner `/ssl` zeigen (z. B. von
+der Let's-Encrypt- oder DuckDNS-App). Details in der Dokumentation der App.
+
+**Serverprüfung:** In das Feld **CA-Zertifikat** das Zertifikat der ausstellenden Stelle im
+PEM-Format einfügen (`-----BEGIN CERTIFICATE-----` …). Bei Let's Encrypt ist das
+[ISRG Root X1](https://letsencrypt.org/certs/isrgrootx1.pem), bei einem selbst
+signierten Zertifikat die eigene CA. Im Feld **Broker** muss dann der Name stehen, auf den
+das Zertifikat ausgestellt ist (z. B. `meinhaus.duckdns.org`), nicht die IP-Adresse.
+
+Schlägt die Verbindung fehl, nennt die Meldung beim Testwert den TLS-Fehler, z. B.
+„X509 - Certificate verification failed“.
 
 ## 3. Testen
 
@@ -155,9 +180,12 @@ die gespeicherte Nachricht.
 
 - **Das Gerät sendet nur, es abonniert nichts.** Über MQTT kann niemand die Zisterne
   steuern oder umkonfigurieren. Daran ändert Discovery nichts.
-- **MQTT läuft unverschlüsselt** (Port 1883, kein TLS): Login und Werte gehen im Klartext
+- **Ohne TLS läuft MQTT unverschlüsselt** (Port 1883): Login und Werte gehen im Klartext
   durchs lokale Netz. Deshalb bekommt die Zisterne ein eigenes Mosquitto-Login – das
   Passwort eines Home-Assistant-Benutzers würde auch die Home-Assistant-Oberfläche öffnen.
+  Mit [TLS](#optional-tls) ist die Verbindung verschlüsselt, mit Serverprüfung auch
+  gegen einen untergeschobenen Broker geschützt. Für einen Broker außerhalb des
+  eigenen Netzes immer TLS mit Serverprüfung verwenden.
 - **Wer Zugang zum Broker hat, kann Werte oder Discovery-Nachrichten fälschen.** Broker
   mit Passwort betreiben (Standard bei der Mosquitto-App) und Port 1883 nicht ins
   Internet freigeben.

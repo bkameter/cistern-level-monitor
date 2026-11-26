@@ -65,8 +65,13 @@ Arduino IDE with the ESP32 board package, board "LOLIN C3 Mini". Required librar
 `Adafruit ADS1X15`, `PubSubClient`.
 
 `firmware/cistern/partitions.csv` replaces the default partition table (2 × 1.56 MB app,
-768 KB LittleFS, room for ~33 months of history). The IDE still shows the size against the default
-1.25 MB limit. Switching an existing device to this table needs one USB flash and erases the history.
+768 KB LittleFS, room for ~33 months of history). Switching an existing device to this table needs
+one USB flash and erases the history.
+
+The firmware (~1.33 MB with TLS) exceeds the IDE's default 1.25 MB size check: select
+*Tools → Partition Scheme → "No OTA (2MB APP/2MB SPIFFS)"*. That only raises the check –
+the table from `partitions.csv` is always used, OTA keeps working. arduino-cli:
+`--fqbn esp32:esp32:lolin_c3_mini:PartitionScheme=no_ota`.
 
 Features:
 
