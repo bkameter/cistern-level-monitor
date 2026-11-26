@@ -4,7 +4,7 @@
 #define VERS "cistern-esp32 1.2, 26.11.2026"
 // Cistern level gauge, LOLIN C3 mini + ADS1115 + 4-20 mA pressure sensor
 // Web: / level (public), /config settings (login zisterne:zisterne), German/English (?lang=de|en); Telnet port 23, MQTT, OTA
-// History: 5-min values, 1 year in LittleFS (/h/YYYYMM.bin), served as /history?m=YYYYMM (31x288 int16, -1 = empty)
+// History: 5-min values, 38 months in the raw "spiffs" partition, served as /history?m=YYYYMM (31x288 int16, -1 = empty)
 // No/wrong WiFi -> access point "Zisterne-Setup" (PW zisterne), settings at http://192.168.4.1/config
 // Factory reset: hold BOOT button for 2 s within the first 5 s after power-up
 
@@ -18,8 +18,7 @@
 #include <Wire.h>
 #include <Adafruit_ADS1X15.h>
 #include <time.h>
-#include <LittleFS.h>
-#include <vector>
+#include <esp_partition.h>
 
 const char* HOSTNAME    = "Zisterne";
 const char* AP_SSID     = "Zisterne-Setup";
@@ -59,13 +58,13 @@ bool en = false;              // language of the current web request, see setLan
 
 float lastMa = NAN;
 int lastMm = -1;              // -1 = measurement error
-const int DAYS = 2;           // RAM holds only today + yesterday (until next save), the rest lives in LittleFS
+const int DAYS = 2;           // RAM holds only today + yesterday (until next save), the rest lives in flash
 const int SLOTS = 288;        // 5-minute values per day
 int16_t level[DAYS][SLOTS];   // days x 5-min values, -1 = no value
 uint32_t dayDate[DAYS];       // YYYYMMDD, 0 = unused
 bool dirty[DAYS];             // changed since last save
 int dayIdx = 0, lastSlot = -1;
-bool fsOk = false;
+const esp_partition_t* hist = nullptr;  // history partition, nullptr = RAM only
 char buf[1200];               // current report for Serial, Telnet
 
 //*********************************************************************
@@ -548,17 +547,23 @@ void logHistory(const tm& t) {  // one value every 5 minutes
   dirty[dayIdx] = true;
 }
 
-// Flash: one file per month /h/YYYYMM.bin, 31 days x 288 x int16 = 18 KB, each day at a fixed offset.
-// (Daily files would exceed the LittleFS inline limit of 512 B and occupy a full 4 KB block each.)
-void monthFile(char* path, uint32_t month) { sprintf(path, "/h/%06u.bin", (unsigned)month); }
+// Flash: raw partition as a ring of month blocks, no file system (LittleFS would cost ~45 KB of firmware).
+// Block = 31 days x 288 x int16 at fixed offsets, then the YYYYMM it holds; 5 sectors = 20 KB, 768 KB -> 38 months.
+// Erased flash reads 0xFFFF = -1 = empty, so days are written in place without erasing (NOR: bits only go 1 -> 0).
+const uint32_t MONTH_BYTES = 31 * SLOTS * 2, BLOCK = 5 * 4096;
+uint32_t monthAddr(uint32_t month) { return (month / 100 * 12 + month % 100) % (hist->size / BLOCK) * BLOCK; }
+bool monthHere(uint32_t month) {  // block holds this month (and not the one 38 months earlier)?
+  uint32_t m = 0;
+  esp_partition_read(hist, monthAddr(month) + MONTH_BYTES, &m, sizeof m);
+  return m == month;
+}
 
 void readDay(uint32_t date, int16_t* dst) {  // YYYYMMDD from RAM (newer than flash) or flash, else -1
   for (int i = 0; i < DAYS; i++)
     if (dayDate[i] == date) { memcpy(dst, level[i], sizeof level[i]); return; }
-  char path[20];
-  monthFile(path, date / 100);
-  File f = fsOk && LittleFS.exists(path) ? LittleFS.open(path) : File();
-  if (!f || !f.seek((date % 100 - 1) * sizeof level[0]) || f.read((uint8_t*)dst, sizeof level[0]) != sizeof level[0])
+  uint32_t month = date / 100;
+  if (!hist || !monthHere(month) ||
+      esp_partition_read(hist, monthAddr(month) + (date % 100 - 1) * sizeof level[0], dst, sizeof level[0]) != ESP_OK)
     memset(dst, 0xFF, sizeof level[0]);
 }
 
@@ -575,7 +580,7 @@ void handleHistory() {  // /history?m=YYYYMM -> 31 days x 288 int16, binary litt
 }
 
 void restart() {  // planned restart: save history first
-  if (fsOk) saveHistory();
+  if (hist) saveHistory();
   ESP.restart();
 }
 
@@ -583,24 +588,16 @@ void saveHistory() {  // changed days only
   int n = 0;
   for (int i = 0; i < DAYS; i++) {
     if (!dirty[i]) continue;
-    uint32_t month = dayDate[i] / 100;
-    char path[20];
-    monthFile(path, month);
-    if (!LittleFS.exists(path)) {  // new month: delete files older than 1 year, prefill the new one with -1
-      std::vector<String> old;     // collect first, deleting while iterating is unsafe
-      File dir = LittleFS.open("/h");
-      for (File f = dir.openNextFile(); f; f = dir.openNextFile())
-        if ((uint32_t)String(f.name()).toInt() < month - 100) old.push_back(f.path());  // same month last year is kept
-      dir.close();
-      for (auto& p : old) LittleFS.remove(p);
-      File f = LittleFS.open(path, "w");
-      int16_t empty[SLOTS];
-      memset(empty, 0xFF, sizeof empty);
-      for (int d = 0; d < 31; d++) f.write((uint8_t*)empty, sizeof empty);
+    uint32_t month = dayDate[i] / 100, a = monthAddr(month);
+    if (!monthHere(month)) {  // new month: erase the block (drops the month 38 months back), then mark it
+      if (esp_partition_erase_range(hist, a, BLOCK) != ESP_OK || esp_partition_write(hist, a + MONTH_BYTES, &month, sizeof month) != ESP_OK) continue;
     }
-    File f = LittleFS.open(path, "r+");
-    if (f && f.seek((dayDate[i] % 100 - 1) * sizeof level[i]) &&
-        f.write((uint8_t*)level[i], sizeof level[i]) == sizeof level[i]) {
+    a += (dayDate[i] % 100 - 1) * sizeof level[i];
+    int16_t d[SLOTS];
+    if (esp_partition_read(hist, a, d, sizeof d) != ESP_OK) continue;
+    for (int s = 0; s < SLOTS; s++)
+      if (d[s] == -1) d[s] = level[i][s];  // only fill empty slots, written ones can't change without an erase
+    if (esp_partition_write(hist, a, d, sizeof d) == ESP_OK) {
       dirty[i] = false;
       n++;
     }  // otherwise retry next time
@@ -644,11 +641,9 @@ void setup() {
   digitalWrite(LED_BUILTIN, LOW);
   Serial.printf("\nCistern level, %s\n", VERS);
   loadPrefs();
-  fsOk = LittleFS.begin(true);  // true: format on first use
-  if (fsOk) {
-    LittleFS.mkdir("/h");
-    Serial.printf("LittleFS: %u of %u KB used\n", (unsigned)(LittleFS.usedBytes() / 1024), (unsigned)(LittleFS.totalBytes() / 1024));
-  } else Serial.println("LittleFS not available - history in RAM only (today/yesterday)");
+  hist = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, "spiffs");
+  if (hist && hist->size < BLOCK) hist = nullptr;
+  if (!hist) Serial.println("No history partition - history in RAM only (today/yesterday)");
 
   Wire.begin(PIN_SDA, PIN_SCL);
   adsOk = ads.begin(0x48, &Wire);   // ADDR to GND
@@ -672,7 +667,7 @@ void setup() {
   ArduinoOTA.setHostname(HOSTNAME);
   ArduinoOTA.setPassword(webPass.c_str());
   ArduinoOTA.onStart([] {  // ESP reboots after the update -> save history first
-    if (fsOk && ArduinoOTA.getCommand() == U_FLASH) saveHistory();
+    if (hist && ArduinoOTA.getCommand() == U_FLASH) saveHistory();
   });
   ArduinoOTA.begin();
 
@@ -709,7 +704,7 @@ void loop() {
   tm t;
   if (getLocalTime(&t, 0)) logHistory(t);  // only after NTP sync
   static unsigned long tSave = 15 * 60000UL;  // first save 15 min after boot, then every 4 h
-  if (fsOk && (long)(millis() - tSave) >= 0) {
+  if (hist && (long)(millis() - tSave) >= 0) {
     saveHistory();
     tSave = millis() + 4 * 3600000UL;
   }

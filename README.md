@@ -65,18 +65,16 @@ Arduino IDE with the ESP32 board package, board "LOLIN C3 Mini". Required librar
 `Adafruit ADS1X15`, `PubSubClient`.
 
 `firmware/cistern/partitions.csv` replaces the default partition table (2 × 1.56 MB app,
-768 KB LittleFS, room for ~33 months of history). Switching an existing device to this table needs
+768 KB history, room for 38 months). Switching an existing device to this table needs
 one USB flash and erases the history.
 
-The firmware (~1.33 MB with TLS) exceeds the IDE's default 1.25 MB size check: select
-*Tools → Partition Scheme → "No OTA (2MB APP/2MB SPIFFS)"*. That only raises the check –
-the table from `partitions.csv` is always used, OTA keeps working. arduino-cli:
-`--fqbn esp32:esp32:lolin_c3_mini:PartitionScheme=no_ota`.
+The firmware (~1.29 MB) fits the IDE's default 1.25 MiB size check, the default partition
+scheme can stay selected – the table from `partitions.csv` is always used.
 
 Features:
 
 - Web interface: `/` shows the level, `/config` the settings
-- History: 5-minute values for one year in LittleFS
+- History: 5-minute values for 38 months, stored raw in flash (no file system)
 - MQTT (optional), OTA updates, Telnet log on port 23 –
   see [Home Assistant integration](docs/home-assistant.md) ([Deutsch](docs/home-assistant-de.md))
 - Calibration (range, shunt, offset) via `/config`
