@@ -17,7 +17,7 @@ The web interface is available in German and English (browser language, switchab
 | `hardware/cistern-esp32/fab/` | Manufacturing data for JLCPCB: Gerber (ZIP), BOM, CPL |
 | `firmware/cistern/` | Arduino firmware (web interface, MQTT, OTA, history) |
 | `firmware/ads1115-test/` | Minimal test sketch: reads the loop current and prints it to serial |
-| `docs/` | Assembly drawing (English PNG + editable SVG source, German PNG), Home Assistant guide (EN/DE) |
+| `docs/` | Assembly drawing (English PNG + editable SVG source, German PNG), setup guide and Home Assistant guide (EN/DE) |
 
 ## Hardware
 
@@ -70,6 +70,9 @@ one USB flash and erases the history.
 
 The firmware (~1.29 MB) fits the IDE's default 1.25 MiB size check, the default partition
 scheme can stay selected – the table from `partitions.csv` is always used.
+
+First setup (password, WiFi, MQTT, calibration) with screenshots:
+[Setup guide](docs/setup.md) ([Deutsch](docs/setup-de.md)).
 
 Features:
 
