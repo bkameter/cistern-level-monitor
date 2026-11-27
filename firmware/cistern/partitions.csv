@@ -1,8 +1,8 @@
 # Replaces the default 4MB table (2x 1.25 MB app / 1.375 MB spiffs), more room for the firmware.
-# LittleFS (label must stay "spiffs"): month file 31x288x2 B = 5 blocks of 4 KB; + dirs/copy-on-write ~10 blocks.
-# 768 KB = 192 blocks -> ~36 months max, keep it at ~33 for free blocks (the firmware currently keeps 13).
-# Apps must be 64 KB aligned, so LittleFS goes in 128 KB steps.
-# Changing this table needs one USB flash (OTA doesn't write it); LittleFS moves and is reformatted (history lost).
+# History (raw, no file system, label must stay "spiffs"): one month = 31x288x2 B -> 5 sectors of 4 KB.
+# 768 KB = 192 sectors -> ring of 38 months.
+# Apps must be 64 KB aligned, so the history partition goes in 128 KB steps.
+# Changing this table needs one USB flash (OTA doesn't write it); the history partition moves (history lost).
 # Name,   Type, SubType, Offset,   Size,     Flags
 nvs,      data, nvs,     0x9000,   0x5000,
 otadata,  data, ota,     0xe000,   0x2000,
