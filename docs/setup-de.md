@@ -103,18 +103,10 @@ Zisterne:
 | **Messbereich Sensor (mm)** | laut Datenblatt des Sensors, z. B. 0–3 m Wassersäule → `3000` |
 | **Shunt (Ω)** | Messwiderstand auf der Platine, `75`. Nur ändern nach Tausch des Widerstands oder mit dem per Multimeter gemessenen Wert |
 | **Offset (mm)** | wird zum Messwert addiert, z. B. wenn der Sensor ein paar Zentimeter über dem Boden hängt |
-| **oder Ist-Füllstand jetzt (mm)** | der einfachere Weg zum Offset, siehe unten |
+| **oder Ist-Füllstand jetzt (mm)** | der einfachere Weg zum Offset, siehe [Sensor kalibrieren](calibration-de.md) |
 | **Messintervall (s)** | wie oft der Sensor gelesen wird, 10–300 s. Der Verlauf speichert unabhängig davon alle 5 min einen Wert |
 
-**Offset über den Ist-Füllstand:** Den Wasserstand in der Zisterne messen (z. B. mit einem
-Zollstock vom Boden bis zur Wasseroberfläche), in **oder Ist-Füllstand jetzt** eintragen und
-speichern. Die Zisterne misst dann sofort und berechnet den Offset so, dass die Anzeige
-genau diesem Wert entspricht. Bei einem Sensorfehler wird der Ist-Wert nicht übernommen,
-die übrigen Felder werden trotzdem gespeichert.
-
-Die Messwerte werden geglättet (Zeitkonstante 100 s) und Schwankungen von ±1 mm
-unterdrückt. Ändert sich der Wasserstand, folgt die Anzeige deshalb mit ein paar Minuten
-Verzögerung.
+So gleichst du den Sensor ab: [Sensor kalibrieren](calibration-de.md) (Schritt für Schritt, mit Skizze).
 
 **Fehlermeldungen:**
 
