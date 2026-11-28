@@ -103,17 +103,10 @@ cistern calculates:
 | **Sensor range (mm)** | from the sensor's data sheet, e.g. 0–3 m water column → `3000` |
 | **Shunt (Ω)** | sense resistor on the board, `75`. Only change it after replacing the resistor or to enter the value measured by multimeter |
 | **Offset (mm)** | added to the reading, e.g. when the sensor hangs a few centimetres above the bottom |
-| **or actual level now (mm)** | the easier way to the offset, see below |
+| **or actual level now (mm)** | the easier way to the offset, see [Calibrating the sensor](calibration.md) |
 | **Measuring interval (s)** | how often the sensor is read, 10–300 s. The history stores a value every 5 min regardless |
 
-**Offset from the actual level:** measure the water level in the cistern (e.g. with a
-folding rule from the bottom to the water surface), enter it in **or actual level now** and
-save. The cistern then measures right away and calculates the offset so that the display
-matches exactly this value. On a sensor error the actual level is not applied, the other
-fields are saved anyway.
-
-Readings are smoothed (time constant 100 s) and fluctuations of ±1 mm are suppressed. When
-the water level changes, the display therefore follows with a delay of a few minutes.
+How to calibrate the sensor: [Calibrating the sensor](calibration.md) (step by step, with a sketch).
 
 **Error messages:**
 
